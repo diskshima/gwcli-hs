@@ -21,7 +21,7 @@ import           Network.Wreq            (Options, Response, defaults, getWith,
 import           Text.Printf             (printf)
 
 data Issue = Issue {
-  id      :: Integer,
+  number  :: Integer,
   htmlUrl :: String,
   title   :: String
 } deriving (Show, Generic)
@@ -40,7 +40,7 @@ getGitHub token = getWith opt
   where opt = maybe defaults gitHubHeader token
 
 formatIssue :: Issue -> String
-formatIssue i = printf "%s: %s" (title i) (htmlUrl i)
+formatIssue i = printf "#%d\n%s\n%s" (number i) (title i) (htmlUrl i)
 
 readIssues :: Response BL.ByteString -> [Issue]
 readIssues resp = fromMaybe [] issues
