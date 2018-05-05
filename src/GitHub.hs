@@ -6,7 +6,7 @@ import           Control.Lens.Operators  ((.~), (^.))
 import           Data.Aeson              (FromJSON (parseJSON), decode,
                                           defaultOptions, fieldLabelModifier,
                                           genericParseJSON)
-import           Data.Aeson.Casing       (snakeCase)
+import           Data.Aeson.Casing       (aesonPrefix, snakeCase)
 import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Lazy    as BL
 import qualified Data.ByteString.UTF8    as U8
@@ -21,13 +21,22 @@ import           Network.Wreq            (Options, Response, defaults, getWith,
 import           Text.Printf             (printf)
 
 data Issue = Issue {
-  number  :: Integer,
-  htmlUrl :: String,
-  title   :: String
+  issueNumber  :: Integer,
+  issueHtmlUrl :: String,
+  issueTitle   :: String
 } deriving (Show, Generic)
 
 instance FromJSON Issue where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = snakeCase }
+  parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
+data Pull = Pull {
+  pullNumber  :: Integer,
+  pullHtmlUrl :: String,
+  pullTitle   :: String
+} deriving (Show, Generic)
+
+instance FromJSON Pull where
+  parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"
@@ -40,23 +49,31 @@ getGitHub token = getWith opt
   where opt = maybe defaults gitHubHeader token
 
 formatIssue :: Issue -> String
-formatIssue i = printf "#%d\n%s\n%s" (number i) (title i) (htmlUrl i)
+formatIssue i = printf "#%d\n%s\n%s" (issueNumber i) (issueTitle i) (issueHtmlUrl i)
 
-readIssues :: Response BL.ByteString -> [Issue]
-readIssues resp = fromMaybe [] issues
-  where issues = decode (resp ^. responseBody) :: Maybe [Issue]
+formatPull :: Pull -> String
+formatPull i = printf "#%d\n%s\n%s" (pullNumber i) (pullTitle i) (pullHtmlUrl i)
+
+readItems :: FromJSON a => Response BL.ByteString -> [a]
+readItems resp = fromMaybe [] items
+  where items = decode (resp ^. responseBody)
 
 readNextLink :: Response BL.ByteString -> U8.ByteString
 readNextLink resp = resp ^. responseLink "rel" "next" . linkURL
 
-getIssuesFromUrl :: Maybe String -> String -> IO [Issue]
-getIssuesFromUrl token "" = return []
-getIssuesFromUrl token url = do
+getItemsFromUrl :: FromJSON a => Maybe String -> String -> IO [a]
+getItemsFromUrl token "" = return []
+getItemsFromUrl token url = do
   resp <- getGitHub token url
-  nextIssues <- getIssuesFromUrl token (U8.toString (readNextLink resp))
-  return $ readIssues resp ++ nextIssues
+  nextItems <- getItemsFromUrl token (U8.toString (readNextLink resp))
+  return $ readItems resp ++ nextItems
 
 getIssues :: [String] -> Maybe String -> IO ()
 getIssues sscmds token = do
-  issues <- getIssuesFromUrl token (gitHubBaseUrl ++ "/repos/organization/repo/issues")
+  issues <- getItemsFromUrl token (gitHubBaseUrl ++ "/repos/organization/repo/issues") :: IO [Issue]
   putStrLn $ intercalate "\n" (fmap formatIssue issues)
+
+getPulls :: [String] -> Maybe String -> IO ()
+getPulls sscmds token = do
+  pulls <- getItemsFromUrl token (gitHubBaseUrl ++ "/repos/organization/repo/pulls") :: IO [Pull]
+  putStrLn $ intercalate "\n" (fmap formatPull pulls)
