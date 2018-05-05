@@ -16,7 +16,8 @@ import           Data.Maybe              (fromMaybe)
 import           Data.String.Conversions (convertString)
 import           GHC.Generics
 import           Network.Wreq            (Options, Response, defaults, getWith,
-                                          header, responseBody)
+                                          header, linkURL, responseBody,
+                                          responseLink)
 import           Text.Printf             (printf)
 
 data Issue = Issue {
@@ -41,9 +42,16 @@ getGitHub token path = getWith opt (gitHubBaseUrl ++ path)
 formatIssue :: Issue -> String
 formatIssue i = printf "%s: %s" (title i) (htmlUrl i)
 
+readIssues :: Response BL.ByteString -> [Issue]
+readIssues resp = fromMaybe [] issues
+  where issues = decode (resp ^. responseBody) :: Maybe [Issue]
+
+readNextLink :: Response BL.ByteString -> U8.ByteString
+readNextLink resp = resp ^. responseLink "rel" "next" . linkURL
+
 getIssues :: [String] -> Maybe String -> IO ()
 getIssues sscmds token = do
   resp <- getGitHub token "/repos/organization/repo/issues"
-  let result = decode (resp ^. responseBody) :: Maybe [Issue]
-      issues = fromMaybe [] result in
+  let issues = readIssues resp in
+      -- print $ readNextLink resp
     putStrLn $ intercalate "\n" (fmap formatIssue issues)
