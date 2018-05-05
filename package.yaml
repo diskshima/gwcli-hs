@@ -21,6 +21,7 @@ description:         Please see the README on Github at <https://github.com/disk
 
 dependencies:
 - base >= 4.7 && < 5
+- aeson
 - bytestring
 - lens
 - string-conversions
