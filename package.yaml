@@ -24,6 +24,7 @@ dependencies:
 - bytestring
 - lens
 - string-conversions
+- utf8-string
 - wreq
 - yaml
 
