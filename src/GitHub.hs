@@ -36,7 +36,7 @@ gitHubHeader :: String -> Options
 gitHubHeader token = defaults & header "Authorization" .~ [U8.fromString $ "token " ++ token]
 
 getGitHub :: Maybe String -> String -> IO (Response BL.ByteString)
-getGitHub token path = getWith opt (gitHubBaseUrl ++ path)
+getGitHub token = getWith opt
   where opt = maybe defaults gitHubHeader token
 
 formatIssue :: Issue -> String
@@ -49,9 +49,14 @@ readIssues resp = fromMaybe [] issues
 readNextLink :: Response BL.ByteString -> U8.ByteString
 readNextLink resp = resp ^. responseLink "rel" "next" . linkURL
 
+getIssuesFromUrl :: Maybe String -> String -> IO [Issue]
+getIssuesFromUrl token "" = return []
+getIssuesFromUrl token url = do
+  resp <- getGitHub token url
+  nextIssues <- getIssuesFromUrl token (U8.toString (readNextLink resp))
+  return $ readIssues resp ++ nextIssues
+
 getIssues :: [String] -> Maybe String -> IO ()
 getIssues sscmds token = do
-  resp <- getGitHub token "/repos/organization/repo/issues"
-  let issues = readIssues resp in
-      -- print $ readNextLink resp
-    putStrLn $ intercalate "\n" (fmap formatIssue issues)
+  issues <- getIssuesFromUrl token (gitHubBaseUrl ++ "/repos/organization/repo/issues")
+  putStrLn $ intercalate "\n" (fmap formatIssue issues)
