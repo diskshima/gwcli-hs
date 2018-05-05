@@ -1,4 +1,4 @@
-name:                git-web-cli-hs
+name:                gwcli
 version:             0.1.0.0
 github:              "diskshima/git-web-cli-hs"
 license:             BSD3
@@ -34,7 +34,7 @@ library:
   source-dirs: src
 
 executables:
-  git-web-cli-hs-exe:
+  gwcli:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -42,10 +42,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - git-web-cli-hs
+    - gwcli
 
 tests:
-  git-web-cli-hs-test:
+  gwcli-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:

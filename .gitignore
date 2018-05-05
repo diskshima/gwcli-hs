@@ -1,4 +1,8 @@
+# Stack
 .stack-work/
-git-web-cli-hs.cabal
+*.cabal
+
 *~
+
+# Credentials
 credentials.yaml
