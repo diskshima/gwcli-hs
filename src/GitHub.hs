@@ -15,6 +15,7 @@ import           Data.List               (intercalate)
 import           Data.Maybe              (fromMaybe)
 import           Data.String.Conversions (convertString)
 import           GHC.Generics
+import           GitUtils                (RepoInfo (..), repoInfoFromRepo)
 import           Network.Wreq            (Options, Response, defaults, getWith,
                                           header, linkURL, responseBody,
                                           responseLink)
@@ -40,6 +41,9 @@ instance FromJSON Pull where
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"
+
+reposPath :: RepoInfo -> String
+reposPath ri = printf "/repos/%s/%s" (organization ri) (repository ri)
 
 gitHubHeader :: String -> Options
 gitHubHeader token = defaults & header "Authorization" .~ [U8.fromString $ "token " ++ token]
@@ -68,12 +72,28 @@ getItemsFromUrl token url = do
   nextItems <- getItemsFromUrl token (U8.toString (readNextLink resp))
   return $ readItems resp ++ nextItems
 
+buildUrl :: String -> IO (Maybe String)
+buildUrl suffix = do
+  maybeRi <- repoInfoFromRepo
+  return $ case maybeRi of
+             Just ri -> Just (gitHubBaseUrl ++ reposPath ri ++ suffix)
+             Nothing -> Nothing
+
 getIssues :: [String] -> Maybe String -> IO ()
 getIssues sscmds token = do
-  issues <- getItemsFromUrl token (gitHubBaseUrl ++ "/repos/organization/repo/issues") :: IO [Issue]
-  putStrLn $ intercalate "\n" (fmap formatIssue issues)
+  maybeUrl <- buildUrl "/issues"
+  case maybeUrl of
+    Just url -> do
+      issues <- getItemsFromUrl token url :: IO [Issue]
+      putStrLn $ intercalate "\n" (fmap formatIssue issues)
+    Nothing -> error "Could not identify remote URL."
 
 getPulls :: [String] -> Maybe String -> IO ()
 getPulls sscmds token = do
-  pulls <- getItemsFromUrl token (gitHubBaseUrl ++ "/repos/organization/repo/pulls") :: IO [Pull]
-  putStrLn $ intercalate "\n" (fmap formatPull pulls)
+  maybeUrl <- buildUrl "/pulls"
+  case maybeUrl of
+    Just url -> do
+       pulls <- getItemsFromUrl token url :: IO [Pull]
+       putStrLn $ intercalate "\n" (fmap formatPull pulls)
+    Nothing -> error "Could not identify remote URL."
+

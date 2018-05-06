@@ -24,7 +24,9 @@ dependencies:
 - aeson
 - aeson-casing
 - bytestring
+- git
 - lens
+- network-uri
 - string-conversions
 - utf8-string
 - wreq
