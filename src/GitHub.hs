@@ -16,6 +16,7 @@ import           GitUtils               (RepoInfo (..), repoInfoFromRepo)
 import           Network.Wreq           (Options, Response, defaults, getWith,
                                          header, linkURL, responseBody,
                                          responseLink)
+import           Opener                 (openUrl)
 import           Text.Printf            (printf)
 
 data Issue = Issue {
@@ -41,6 +42,9 @@ gitHubBaseUrl = "https://api.github.com"
 
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repos/%s/%s" (organization ri) (repository ri)
+
+browserPath :: RepoInfo -> String
+browserPath ri = printf "https://github.com/%s/%s" (organization ri) (repository ri)
 
 gitHubHeader :: String -> Options
 gitHubHeader token = defaults & header "Authorization" .~ [U8.fromString $ "token " ++ token]
@@ -114,3 +118,10 @@ getIssues _ token =
 getPulls :: [String] -> Maybe String -> IO ()
 getPulls _ token =
   runListQuery token "/pulls" formatPull >>= putStrLn
+
+open :: IO ()
+open = do
+  maybeRi <- repoInfoFromRepo
+  case maybeRi of
+    Just ri -> openUrl $ browserPath ri
+    Nothing -> error "Could not identify repo info."

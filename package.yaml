@@ -30,6 +30,7 @@ dependencies:
 - lens
 - MissingH
 - network-uri
+- process
 - utf8-string
 - wreq
 - yaml
@@ -46,6 +47,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     - -Wall
+    - -Werror
     dependencies:
     - gwcli
 

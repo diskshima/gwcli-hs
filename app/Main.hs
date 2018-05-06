@@ -5,7 +5,8 @@ module Main where
 
 import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
-import           GitHub                (getIssue, getIssues, getPull, getPulls)
+import           GitHub                (getIssue, getIssues, getPull, getPulls,
+                                        open)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
@@ -54,6 +55,7 @@ main = do
         "issues" -> getIssues (tail n) (fmap github cred)
         "pull"   -> getPull (tail n) (fmap github cred)
         "pulls"  -> getPulls (tail n) (fmap github cred)
+        "browse" -> open
         _        -> printError "Please specify subcommand"
     (_, _, errs) -> printError $ concat errs ++ usageInfo header options
   where header = "Usage: gwcli subcommand"
