@@ -26,6 +26,7 @@ dependencies:
 - bytestring
 - git
 - lens
+- MissingH
 - network-uri
 - string-conversions
 - utf8-string

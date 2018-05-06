@@ -7,7 +7,8 @@ module GitUtils
 
 import           Data.Git.Repository (configGet)
 import           Data.Git.Storage    (findRepoMaybe, openRepo)
-import           Data.List           (isSuffixOf)
+import           Data.List           (isPrefixOf, isSuffixOf)
+import           Data.String.Utils   (replace)
 import           Network.URI         (parseURI, pathSegments)
 import           Text.Printf         (printf)
 
@@ -45,7 +46,13 @@ segmentsToRepoInfo segs = RepoInfo (head segs) repoName
   where second = segs !! 1
         repoName = if ".git" `isSuffixOf` second then dropDotGit second else second
 
+toFullSshUrl :: String -> String
+toFullSshUrl str =
+  if "ssh://" `isPrefixOf` str
+    then str
+    else "ssh://" ++ replace ":" "/" str
+
 urlToRepoInfo :: String -> Maybe RepoInfo
 urlToRepoInfo url = do
-  uri <- parseURI url
+  uri <- parseURI $ toFullSshUrl url
   return $ (segmentsToRepoInfo . pathSegments) uri
