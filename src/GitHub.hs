@@ -79,21 +79,19 @@ buildUrl suffix = do
              Just ri -> Just (gitHubBaseUrl ++ reposPath ri ++ suffix)
              Nothing -> Nothing
 
-getIssues :: [String] -> Maybe String -> IO ()
-getIssues sscmds token = do
-  maybeUrl <- buildUrl "/issues"
+runListQuery :: FromJSON a => Maybe String -> String -> (a -> String) -> IO String
+runListQuery token suffix format = do
+  maybeUrl <- buildUrl suffix
   case maybeUrl of
     Just url -> do
-      issues <- getItemsFromUrl token url :: IO [Issue]
-      putStrLn $ intercalate "\n" (fmap formatIssue issues)
-    Nothing -> error "Could not identify remote URL."
+      items <- getItemsFromUrl token url
+      return $ intercalate "\n" (fmap format items)
+    Nothing  -> error "Could not identify remote URL."
+
+getIssues :: [String] -> Maybe String -> IO ()
+getIssues sscmds token =
+  runListQuery token "/issues" formatIssue >>= putStrLn
 
 getPulls :: [String] -> Maybe String -> IO ()
-getPulls sscmds token = do
-  maybeUrl <- buildUrl "/pulls"
-  case maybeUrl of
-    Just url -> do
-       pulls <- getItemsFromUrl token url :: IO [Pull]
-       putStrLn $ intercalate "\n" (fmap formatPull pulls)
-    Nothing -> error "Could not identify remote URL."
-
+getPulls sscmds token =
+  runListQuery token "/pulls" formatPull >>= putStrLn
