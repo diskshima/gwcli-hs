@@ -3,6 +3,3 @@
 *.cabal
 
 *~
-
-# Credentials
-credentials.yaml

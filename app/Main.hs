@@ -8,7 +8,9 @@ import           GHC.Generics
 import           GitHub                (getIssue, getIssues, getPull, getPulls)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
+import           System.Directory      (getHomeDirectory)
 import           System.Environment    (getArgs)
+import           System.FilePath       (joinPath)
 
 data Flag =
   Help |
@@ -43,7 +45,8 @@ readCredential filepath = do
 main :: IO ()
 main = do
   args <- getArgs
-  cred <- readCredential "credentials.yaml"
+  homeDir <- getHomeDirectory
+  cred <- readCredential $ joinPath [homeDir, ".gwcli.yaml"]
   case getOpt RequireOrder options args of
     (o, n, [])   ->
       case head n of

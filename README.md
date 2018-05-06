@@ -9,13 +9,18 @@ A command line tool for Git sites (GitHub, ZenHub).
         or
     $ curl -sSL https://get.haskellstack.org/ | sh
     ```
-
 ## Build
 ```bash
 stack build
 ```
 
 ## Run
-```bash
-stack exec gwcli
-```
+1. Create a credentials file named `.gwcli.yaml` in your home directory.
+    ```yaml
+    zenhub: ZENHUB_API_KEY
+    github: GITHUB_PERSONAL_TOKEN
+    ```
+1. Running it via `stack exec`
+    ```bash
+    stack exec gwcli
+    ```
