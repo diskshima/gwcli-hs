@@ -5,14 +5,13 @@ module Main where
 
 import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
-import           GitHub                (getIssues, getPulls)
+import           GitHub                (getIssue, getIssues, getPull, getPulls)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Environment    (getArgs)
 
 data Flag =
   Help |
-  Issues |
   Verbose |
   Version
 
@@ -48,7 +47,9 @@ main = do
   case getOpt RequireOrder options args of
     (o, n, [])   ->
       case head n of
+        "issue"  -> getIssue (tail n) (fmap github cred)
         "issues" -> getIssues (tail n) (fmap github cred)
+        "pull"   -> getPull (tail n) (fmap github cred)
         "pulls"  -> getPulls (tail n) (fmap github cred)
         _        -> printError "Please specify subcommand"
     (_, _, errs) -> printError $ concat errs ++ usageInfo header options

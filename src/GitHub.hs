@@ -58,6 +58,9 @@ formatIssue i = printf "#%d\n%s\n%s" (issueNumber i) (issueTitle i) (issueHtmlUr
 formatPull :: Pull -> String
 formatPull i = printf "#%d\n%s\n%s" (pullNumber i) (pullTitle i) (pullHtmlUrl i)
 
+readItem :: FromJSON a => Response BL.ByteString -> Maybe a
+readItem resp = decode (resp ^. responseBody)
+
 readItems :: FromJSON a => Response BL.ByteString -> [a]
 readItems resp = fromMaybe [] items
   where items = decode (resp ^. responseBody)
@@ -79,6 +82,15 @@ buildUrl suffix = do
              Just ri -> Just (gitHubBaseUrl ++ reposPath ri ++ suffix)
              Nothing -> Nothing
 
+runItemQuery :: FromJSON a => Maybe String -> String -> (a -> String) -> IO String
+runItemQuery token suffix format = do
+  maybeUrl <- buildUrl suffix
+  case maybeUrl of
+    Just url -> do
+      item <- getGitHub token url
+      return $ maybe "" format (readItem item)
+    Nothing  -> error "Could not identify remote URL."
+
 runListQuery :: FromJSON a => Maybe String -> String -> (a -> String) -> IO String
 runListQuery token suffix format = do
   maybeUrl <- buildUrl suffix
@@ -87,6 +99,16 @@ runListQuery token suffix format = do
       items <- getItemsFromUrl token url
       return $ intercalate "\n" (fmap format items)
     Nothing  -> error "Could not identify remote URL."
+
+getIssue :: [String] -> Maybe String -> IO ()
+getIssue sscmds token =
+  runItemQuery token path formatIssue >>= putStrLn
+    where path = "/issues/" ++ head sscmds
+
+getPull :: [String] -> Maybe String -> IO ()
+getPull sscmds token =
+  runItemQuery token path formatPull >>= putStrLn
+    where path = "/pulls/" ++ head sscmds
 
 getIssues :: [String] -> Maybe String -> IO ()
 getIssues sscmds token =
