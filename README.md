@@ -1,4 +1,4 @@
-# git-web-cli-hs
+# gwcli-hs
 
 A command line tool for Git sites (GitHub, ZenHub).
 

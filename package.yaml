@@ -1,6 +1,6 @@
 name:                gwcli
 version:             0.1.0.0
-github:              "diskshima/git-web-cli-hs"
+github:              "diskshima/gwcli-hs"
 license:             BSD3
 author:              "Daisuke Shimamoto"
 maintainer:          "diskshima@gmail.com"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on Github at <https://github.com/diskshima/git-web-cli-hs#readme>
+description:         Please see the README on Github at <https://github.com/diskshima/gwcli-hs#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -55,4 +55,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - git-web-cli-hs
+    - gwcli-hs

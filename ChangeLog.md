@@ -1,3 +1,3 @@
-# Changelog for git-web-cli-hs
+# Changelog for gwcli-hs
 
 ## Unreleased changes
