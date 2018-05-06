@@ -26,17 +26,15 @@ repoInfoFromRepo = do
 
 getRemoteUrl :: IO (Maybe String)
 getRemoteUrl = do
-  path <- findRepoMaybe
-  case path of
-    Just path -> getRemoteUrlInner path
+  maybePath <- findRepoMaybe
+  case maybePath of
+    Just path -> do
+      repo <- openRepo path
+      configGet repo (remoteSection "origin") "url"
     Nothing   -> return Nothing
 
 remoteSection :: String -> String
 remoteSection = printf "remote \"%s\""
-
-getRemoteUrlInner path = do
-  repo <- openRepo path
-  configGet repo (remoteSection "origin") "url"
 
 dropDotGit :: String -> String
 dropDotGit = reverse . drop 4 . reverse

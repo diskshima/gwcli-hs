@@ -2,24 +2,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 module GitHub where
 
-import           Control.Lens.Operators  ((.~), (^.))
-import           Data.Aeson              (FromJSON (parseJSON), decode,
-                                          defaultOptions, fieldLabelModifier,
-                                          genericParseJSON)
-import           Data.Aeson.Casing       (aesonPrefix, snakeCase)
-import qualified Data.ByteString         as BS
-import qualified Data.ByteString.Lazy    as BL
-import qualified Data.ByteString.UTF8    as U8
-import           Data.Function           ((&))
-import           Data.List               (intercalate)
-import           Data.Maybe              (fromMaybe)
-import           Data.String.Conversions (convertString)
+import           Control.Lens.Operators ((.~), (^.))
+import           Data.Aeson             (FromJSON (parseJSON), decode,
+                                         genericParseJSON)
+import           Data.Aeson.Casing      (aesonPrefix, snakeCase)
+import qualified Data.ByteString.Lazy   as BL
+import qualified Data.ByteString.UTF8   as U8
+import           Data.Function          ((&))
+import           Data.List              (intercalate)
+import           Data.Maybe             (fromMaybe)
 import           GHC.Generics
-import           GitUtils                (RepoInfo (..), repoInfoFromRepo)
-import           Network.Wreq            (Options, Response, defaults, getWith,
-                                          header, linkURL, responseBody,
-                                          responseLink)
-import           Text.Printf             (printf)
+import           GitUtils               (RepoInfo (..), repoInfoFromRepo)
+import           Network.Wreq           (Options, Response, defaults, getWith,
+                                         header, linkURL, responseBody,
+                                         responseLink)
+import           Text.Printf            (printf)
 
 data Issue = Issue {
   issueNumber  :: Integer,
@@ -69,7 +66,7 @@ readNextLink :: Response BL.ByteString -> U8.ByteString
 readNextLink resp = resp ^. responseLink "rel" "next" . linkURL
 
 getItemsFromUrl :: FromJSON a => Maybe String -> String -> IO [a]
-getItemsFromUrl token "" = return []
+getItemsFromUrl _ "" = return []
 getItemsFromUrl token url = do
   resp <- getGitHub token url
   nextItems <- getItemsFromUrl token (U8.toString (readNextLink resp))
@@ -111,9 +108,9 @@ getPull sscmds token =
     where path = "/pulls/" ++ head sscmds
 
 getIssues :: [String] -> Maybe String -> IO ()
-getIssues sscmds token =
+getIssues _ token =
   runListQuery token "/issues" formatIssue >>= putStrLn
 
 getPulls :: [String] -> Maybe String -> IO ()
-getPulls sscmds token =
+getPulls _ token =
   runListQuery token "/pulls" formatPull >>= putStrLn

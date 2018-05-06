@@ -48,7 +48,7 @@ main = do
   homeDir <- getHomeDirectory
   cred <- readCredential $ joinPath [homeDir, ".gwcli.yaml"]
   case getOpt RequireOrder options args of
-    (o, n, [])   ->
+    (_, n, [])   ->
       case head n of
         "issue"  -> getIssue (tail n) (fmap github cred)
         "issues" -> getIssues (tail n) (fmap github cred)
