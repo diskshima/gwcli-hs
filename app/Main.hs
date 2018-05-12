@@ -5,13 +5,15 @@ module Main where
 
 import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
-import           GitHub                (getIssue, getIssues, getPull, getPulls,
-                                        open)
+import           GitHub                (createIssue, getIssue, getIssues,
+                                        getPullRequest, getPullRequests, open)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
 import           System.Environment    (getArgs)
 import           System.FilePath       (joinPath)
+import           Types                 (IssueDetails (..))
+                                        -- PullRequestDetails (..))
 
 data Flag =
   Help |
@@ -43,6 +45,30 @@ readCredential filepath = do
       return Nothing
     Right content -> return content
 
+paramToIssueDetails :: [String] -> IssueDetails
+paramToIssueDetails params = IssueDetails title body
+  where title = head params
+        body = params !! 1
+
+handleIssue :: [String] -> Maybe String -> IO ()
+handleIssue params token =
+  case subsubcommand of
+    "show"   -> getIssue rest token
+    "list"   -> getIssues rest token
+    "create" -> createIssue (paramToIssueDetails rest) token
+    _      -> printError $ "Subcommand " ++ subsubcommand ++ " not supported"
+    where subsubcommand = head params
+          rest = tail params
+
+handlePullRequest :: [String] -> Maybe String -> IO ()
+handlePullRequest params token =
+  case subsubcommand of
+    "show" -> getPullRequest rest token
+    "list" -> getPullRequests rest token
+    _      -> printError $ "Command " ++ subsubcommand ++ " not supported"
+    where subsubcommand = head params
+          rest = tail params
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -51,11 +77,9 @@ main = do
   case getOpt RequireOrder options args of
     (_, n, [])   ->
       case head n of
-        "issue"  -> getIssue (tail n) (fmap github cred)
-        "issues" -> getIssues (tail n) (fmap github cred)
-        "pull"   -> getPull (tail n) (fmap github cred)
-        "pulls"  -> getPulls (tail n) (fmap github cred)
-        "browse" -> open
-        _        -> printError "Please specify subcommand"
+        "issue"       -> handleIssue (tail n) (fmap github cred)
+        "pullrequest" -> handlePullRequest (tail n) (fmap github cred)
+        "browse"      -> open
+        _             -> printError "Please specify subcommand"
     (_, _, errs) -> printError $ concat errs ++ usageInfo header options
   where header = "Usage: gwcli subcommand"

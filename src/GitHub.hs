@@ -3,8 +3,9 @@
 module GitHub where
 
 import           Control.Lens.Operators ((.~), (^.))
-import           Data.Aeson             (FromJSON (parseJSON), decode,
-                                         genericParseJSON)
+import           Data.Aeson             (FromJSON (parseJSON), ToJSON (toJSON),
+                                         decode, genericParseJSON,
+                                         genericToJSON)
 import           Data.Aeson.Casing      (aesonPrefix, snakeCase)
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as U8
@@ -14,19 +15,38 @@ import           Data.Maybe             (fromMaybe)
 import           GHC.Generics
 import           GitUtils               (RepoInfo (..), repoInfoFromRepo)
 import           Network.Wreq           (Options, Response, defaults, getWith,
-                                         header, linkURL, responseBody,
-                                         responseLink)
+                                         header, linkURL, postWith,
+                                         responseBody, responseLink)
+import           Network.Wreq.Types     (Postable)
 import           Opener                 (openUrl)
 import           Text.Printf            (printf)
+import           Types                  (IssueDetails (..),
+                                         PullRequestDetails (..))
 
-data Issue = Issue {
-  issueNumber  :: Integer,
-  issueHtmlUrl :: String,
-  issueTitle   :: String
+data IssueGet = IssueGet {
+  issuegetNumber  :: Integer,
+  issuegetHtmlUrl :: String,
+  issuegetTitle   :: String
 } deriving (Show, Generic)
 
-instance FromJSON Issue where
+instance FromJSON IssueGet where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
+data IssuePost = IssuePost {
+  issuepostTitle :: String,
+  issuepostBody  :: String
+} deriving (Show, Generic)
+
+instance ToJSON IssuePost where
+  toJSON = genericToJSON $ aesonPrefix snakeCase
+
+data PullRequestPost = PullRequestPost {
+  prPostTitle :: String,
+  prPostBody  :: String
+} deriving (Show, Generic)
+
+instance ToJSON PullRequestPost where
+  toJSON = genericToJSON $ aesonPrefix snakeCase
 
 data Pull = Pull {
   pullNumber  :: Integer,
@@ -53,8 +73,12 @@ getGitHub :: Maybe String -> String -> IO (Response BL.ByteString)
 getGitHub token = getWith opt
   where opt = maybe defaults gitHubHeader token
 
-formatIssue :: Issue -> String
-formatIssue i = printf "#%d\n%s\n%s" (issueNumber i) (issueTitle i) (issueHtmlUrl i)
+postGitHub :: Postable a => Maybe String -> String -> a -> IO (Response BL.ByteString)
+postGitHub token = postWith opt
+  where opt = maybe defaults gitHubHeader token
+
+formatIssue :: IssueGet -> String
+formatIssue i = printf "#%d\n%s\n%s" (issuegetNumber i) (issuegetTitle i) (issuegetHtmlUrl i)
 
 formatPull :: Pull -> String
 formatPull i = printf "#%d\n%s\n%s" (pullNumber i) (pullTitle i) (pullHtmlUrl i)
@@ -106,8 +130,8 @@ getIssue sscmds token =
   runItemQuery token path formatIssue >>= putStrLn
     where path = "/issues/" ++ head sscmds
 
-getPull :: [String] -> Maybe String -> IO ()
-getPull sscmds token =
+getPullRequest :: [String] -> Maybe String -> IO ()
+getPullRequest sscmds token =
   runItemQuery token path formatPull >>= putStrLn
     where path = "/pulls/" ++ head sscmds
 
@@ -115,9 +139,27 @@ getIssues :: [String] -> Maybe String -> IO ()
 getIssues _ token =
   runListQuery token "/issues" formatIssue >>= putStrLn
 
-getPulls :: [String] -> Maybe String -> IO ()
-getPulls _ token =
+getPullRequests :: [String] -> Maybe String -> IO ()
+getPullRequests _ token =
   runListQuery token "/pulls" formatPull >>= putStrLn
+
+issueDetailsToIssuePost :: IssueDetails -> IssuePost
+issueDetailsToIssuePost issueDetails =
+  IssuePost (idTitle issueDetails) (idBody issueDetails)
+
+pullRequestDetailsToPullRequestPost :: PullRequestDetails -> PullRequestPost
+pullRequestDetailsToPullRequestPost prDetails =
+  PullRequestPost (prTitle prDetails) (prBody prDetails)
+
+createIssue :: IssueDetails -> Maybe String -> IO ()
+createIssue details token = do
+  maybeUrl <- buildUrl "/issues"
+  case maybeUrl of
+    Just url -> do
+      resp <- postGitHub token url (toJSON issue)
+      putStrLn $ maybe "Failed to read response." formatIssue (readItem resp)
+    Nothing -> error "Could not identify remote URL."
+  where issue = issueDetailsToIssuePost details
 
 open :: IO ()
 open = do
