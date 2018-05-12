@@ -7,7 +7,7 @@ import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
 import           GitHub                (createIssue, createPR, getIssue,
                                         getIssues, getPR, getPRs, open)
-import           ListUtils             (nthOrDefault)
+import           ListUtils             (nthOrDefault, nthOrNothing)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
@@ -48,14 +48,14 @@ readCredential filepath = do
 paramToIssueDetails :: [String] -> IssueDetails
 paramToIssueDetails params = IssueDetails title body
   where title = head params
-        body = params !! 1
+        body = nthOrNothing params 1
 
 paramsToPRDetails :: [String] -> PRDetails
 paramsToPRDetails params = PRDetails title src dest body
   where title = head params
         src = params !! 1
         dest = nthOrDefault params "master" 2
-        body = nthOrDefault params "" 3
+        body = nthOrNothing params 3
 
 handleIssue :: [String] -> Maybe String -> IO ()
 handleIssue params token =

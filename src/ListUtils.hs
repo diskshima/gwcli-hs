@@ -1,14 +1,20 @@
 module ListUtils
   (
-    nthOrDefault
+    nthOrDefault,
+    nthOrNothing
   ) where
 
-nthOrDefault :: [a] -> a -> Integer -> a
-nthOrDefault arr defValue index = nthOrDefaultInner arr defValue index 0
+import           Data.Maybe (fromMaybe)
 
-nthOrDefaultInner :: [a] -> a -> Integer -> Integer -> a
-nthOrDefaultInner [] defValue _ _ = defValue
-nthOrDefaultInner (x: xs) defValue index curIndex =
+nthOrDefault :: [a] -> a -> Integer -> a
+nthOrDefault arr defValue index = fromMaybe defValue (nthOrNothing arr index)
+
+nthOrNothing :: [a] -> Integer -> Maybe a
+nthOrNothing arr index = nthOrNothingInner arr index 0
+
+nthOrNothingInner :: [a] -> Integer -> Integer -> Maybe a
+nthOrNothingInner [] _ _ = Nothing
+nthOrNothingInner (x: xs) index curIndex =
   if index == curIndex
-   then x
-   else nthOrDefaultInner xs defValue index (curIndex + 1)
+   then Just x
+   else nthOrNothingInner xs index (curIndex + 1)

@@ -33,7 +33,7 @@ instance FromJSON IssueGet where
 
 data IssuePost = IssuePost {
   issuepostTitle :: String,
-  issuepostBody  :: String
+  issuepostBody  :: Maybe String
 } deriving (Show, Generic)
 
 instance ToJSON IssuePost where
@@ -43,7 +43,7 @@ data PRPost = PRPost {
   prpostTitle :: String,
   prpostHead  :: String,
   prpostBase  :: String,
-  prpostBody  :: String
+  prpostBody  :: Maybe String
 } deriving (Show, Generic)
 
 instance ToJSON PRPost where
