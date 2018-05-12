@@ -20,8 +20,7 @@ import           Network.Wreq           (Options, Response, defaults, getWith,
 import           Network.Wreq.Types     (Postable)
 import           Opener                 (openUrl)
 import           Text.Printf            (printf)
-import           Types                  (IssueDetails (..),
-                                         PullRequestDetails (..))
+import           Types                  (IssueDetails (..), PRDetails (..))
 
 data IssueGet = IssueGet {
   issuegetNumber  :: Integer,
@@ -40,12 +39,14 @@ data IssuePost = IssuePost {
 instance ToJSON IssuePost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
-data PullRequestPost = PullRequestPost {
-  prPostTitle :: String,
-  prPostBody  :: String
+data PRPost = PRPost {
+  prpostTitle :: String,
+  prpostHead  :: String,
+  prpostBase  :: String,
+  prpostBody  :: String
 } deriving (Show, Generic)
 
-instance ToJSON PullRequestPost where
+instance ToJSON PRPost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
 data Pull = Pull {
@@ -130,8 +131,8 @@ getIssue sscmds token =
   runItemQuery token path formatIssue >>= putStrLn
     where path = "/issues/" ++ head sscmds
 
-getPullRequest :: [String] -> Maybe String -> IO ()
-getPullRequest sscmds token =
+getPR :: [String] -> Maybe String -> IO ()
+getPR sscmds token =
   runItemQuery token path formatPull >>= putStrLn
     where path = "/pulls/" ++ head sscmds
 
@@ -139,27 +140,35 @@ getIssues :: [String] -> Maybe String -> IO ()
 getIssues _ token =
   runListQuery token "/issues" formatIssue >>= putStrLn
 
-getPullRequests :: [String] -> Maybe String -> IO ()
-getPullRequests _ token =
+getPRs :: [String] -> Maybe String -> IO ()
+getPRs _ token =
   runListQuery token "/pulls" formatPull >>= putStrLn
 
 issueDetailsToIssuePost :: IssueDetails -> IssuePost
 issueDetailsToIssuePost issueDetails =
   IssuePost (idTitle issueDetails) (idBody issueDetails)
 
-pullRequestDetailsToPullRequestPost :: PullRequestDetails -> PullRequestPost
-pullRequestDetailsToPullRequestPost prDetails =
-  PullRequestPost (prTitle prDetails) (prBody prDetails)
+prDetailsToPRPost :: PRDetails -> PRPost
+prDetailsToPRPost prDetails =
+  PRPost (prTitle prDetails) (prSrcBranch prDetails) (prDestBranch prDetails)
+    (prBody prDetails)
 
-createIssue :: IssueDetails -> Maybe String -> IO ()
-createIssue details token = do
-  maybeUrl <- buildUrl "/issues"
+runCreate :: (ToJSON a, FromJSON b) => Maybe String -> String -> a -> (b -> String) -> IO ()
+runCreate token suffix param format = do
+  maybeUrl <- buildUrl suffix
   case maybeUrl of
     Just url -> do
-      resp <- postGitHub token url (toJSON issue)
-      putStrLn $ maybe "Failed to read response." formatIssue (readItem resp)
+      resp <- postGitHub token url (toJSON param)
+      putStrLn $ maybe "Failed to read response." format (readItem resp)
     Nothing -> error "Could not identify remote URL."
-  where issue = issueDetailsToIssuePost details
+
+createIssue :: IssueDetails -> Maybe String -> IO ()
+createIssue details token = runCreate token "/issues" param formatIssue
+  where param = issueDetailsToIssuePost details
+
+createPR :: PRDetails -> Maybe String -> IO ()
+createPR details token = runCreate token "/pulls" param formatPull
+  where param = prDetailsToPRPost details
 
 open :: IO ()
 open = do

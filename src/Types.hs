@@ -1,7 +1,7 @@
 module Types
   (
     IssueDetails(..)
-  , PullRequestDetails(..)
+  , PRDetails(..)
   ) where
 
 data IssueDetails = IssueDetails {
@@ -9,9 +9,9 @@ data IssueDetails = IssueDetails {
   idBody  :: String
 } deriving (Show)
 
-data PullRequestDetails = PullRequestDetails {
+data PRDetails = PRDetails {
   prTitle      :: String,
-  prBody       :: String,
+  prSrcBranch  :: String,
   prDestBranch :: String,
-  prSrcBranch  :: String
+  prBody       :: String
 } deriving (Show)

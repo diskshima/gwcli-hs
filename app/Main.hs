@@ -5,15 +5,15 @@ module Main where
 
 import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
-import           GitHub                (createIssue, getIssue, getIssues,
-                                        getPullRequest, getPullRequests, open)
+import           GitHub                (createIssue, createPR, getIssue,
+                                        getIssues, getPR, getPRs, open)
+import           ListUtils             (nthOrDefault)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
 import           System.Environment    (getArgs)
 import           System.FilePath       (joinPath)
-import           Types                 (IssueDetails (..))
-                                        -- PullRequestDetails (..))
+import           Types                 (IssueDetails (..), PRDetails (..))
 
 data Flag =
   Help |
@@ -50,6 +50,13 @@ paramToIssueDetails params = IssueDetails title body
   where title = head params
         body = params !! 1
 
+paramsToPRDetails :: [String] -> PRDetails
+paramsToPRDetails params = PRDetails title src dest body
+  where title = head params
+        src = params !! 1
+        dest = nthOrDefault params "master" 2
+        body = nthOrDefault params "" 3
+
 handleIssue :: [String] -> Maybe String -> IO ()
 handleIssue params token =
   case subsubcommand of
@@ -60,12 +67,13 @@ handleIssue params token =
     where subsubcommand = head params
           rest = tail params
 
-handlePullRequest :: [String] -> Maybe String -> IO ()
-handlePullRequest params token =
+handlePR :: [String] -> Maybe String -> IO ()
+handlePR params token =
   case subsubcommand of
-    "show" -> getPullRequest rest token
-    "list" -> getPullRequests rest token
-    _      -> printError $ "Command " ++ subsubcommand ++ " not supported"
+    "show"   -> getPR rest token
+    "list"   -> getPRs rest token
+    "create" -> createPR (paramsToPRDetails rest) token
+    _        -> printError $ "Command " ++ subsubcommand ++ " not supported"
     where subsubcommand = head params
           rest = tail params
 
@@ -78,7 +86,7 @@ main = do
     (_, n, [])   ->
       case head n of
         "issue"       -> handleIssue (tail n) (fmap github cred)
-        "pullrequest" -> handlePullRequest (tail n) (fmap github cred)
+        "pullrequest" -> handlePR (tail n) (fmap github cred)
         "browse"      -> open
         _             -> printError "Please specify subcommand"
     (_, _, errs) -> printError $ concat errs ++ usageInfo header options
