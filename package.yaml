@@ -48,8 +48,6 @@ executables:
     - -with-rtsopts=-N
     - -Wall
     - -Werror
-    dependencies:
-    - gwcli
 
 tests:
   gwcli-test:
@@ -59,5 +57,3 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    dependencies:
-    - gwcli-hs
