@@ -79,10 +79,10 @@ postGitHub token = postWith opt
   where opt = maybe defaults gitHubHeader token
 
 formatIssue :: IssueGet -> String
-formatIssue i = printf "#%d\n%s\n%s" (issuegetNumber i) (issuegetTitle i) (issuegetHtmlUrl i)
+formatIssue i = printf "#%d: %s\n%s" (issuegetNumber i) (issuegetTitle i) (issuegetHtmlUrl i)
 
 formatPull :: Pull -> String
-formatPull i = printf "#%d\n%s\n%s" (pullNumber i) (pullTitle i) (pullHtmlUrl i)
+formatPull i = printf "#%d: %s\n%s" (pullNumber i) (pullTitle i) (pullHtmlUrl i)
 
 readItem :: FromJSON a => Response BL.ByteString -> Maybe a
 readItem resp = decode (resp ^. responseBody)
