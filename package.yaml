@@ -31,6 +31,7 @@ dependencies:
 - MissingH
 - network-uri
 - process
+- raw-strings-qq
 - utf8-string
 - wreq
 - yaml
