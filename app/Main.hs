@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
 
 module Main where
 
@@ -13,6 +14,7 @@ import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
 import           System.Directory      (getHomeDirectory)
 import           System.Environment    (getArgs)
 import           System.FilePath       (joinPath)
+import           Text.RawString.QQ
 import           Types                 (IssueDetails (..), PRDetails (..))
 
 data Flag =
@@ -77,6 +79,13 @@ handlePR params token =
     where subsubcommand = head params
           rest = tail params
 
+handleHelp :: IO ()
+handleHelp = putStr [r|issue create|show|list
+pullrequest create|show|list
+browse
+help
+|]
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -88,6 +97,7 @@ main = do
         "issue"       -> handleIssue (tail n) (fmap github cred)
         "pullrequest" -> handlePR (tail n) (fmap github cred)
         "browse"      -> open
+        "help"        -> handleHelp
         _             -> printError "Please specify subcommand"
     (_, _, errs) -> printError $ concat errs ++ usageInfo header options
   where header = "Usage: gwcli subcommand"
