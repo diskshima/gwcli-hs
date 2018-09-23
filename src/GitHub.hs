@@ -20,13 +20,13 @@ import           Network.Wreq           (Options, Response, defaults, getWith,
                                          responseBody, responseLink)
 import           Network.Wreq.Types     (Postable)
 import           Opener                 (openUrl)
+import           Remote                 (Remote (..), Token)
 import           Text.Printf            (printf)
 import qualified Types.Issue            as I
 import qualified Types.PullRequest      as PR
-import           Remote                 (Remote (..), Token)
 
 data IssueGet = IssueGet {
-  issuegetNumber  :: String,
+  issuegetNumber  :: Integer,
   issuegetHtmlUrl :: String,
   issuegetTitle   :: String
 } deriving (Show, Generic)
@@ -105,15 +105,12 @@ postGitHub token = postWith opt
 
 responseToIssue :: IssueGet -> I.Issue
 responseToIssue i =
-  I.Issue (Just $ issuegetNumber i) (issuegetTitle i) Nothing (Just $ issuegetHtmlUrl i)
+  I.Issue (Just . show $ issuegetNumber i) (issuegetTitle i) Nothing (Just $ issuegetHtmlUrl i)
 
 responseToPullRequest :: PullRequestGet -> PR.PullRequest
 responseToPullRequest pr =
-  PR.PullRequest (Just $ pullrequestgetNumber pr) (pullrequestgetTitle pr) "" "" Nothing Nothing
-
-formatPullRequest :: PullRequestGet -> String
-formatPullRequest i =
-  printf "#%d: %s\n%s" (pullrequestgetNumber i) (pullrequestgetTitle i) (pullrequestgetHtmlUrl i)
+  PR.PullRequest (Just . show $ pullrequestgetNumber pr) (pullrequestgetTitle pr)
+                 "" "" Nothing Nothing
 
 readItem :: FromJSON a => Response BL.ByteString -> Maybe a
 readItem resp = decode (resp ^. responseBody)

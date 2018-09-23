@@ -16,4 +16,4 @@ data Issue = Issue {
 } deriving (Show)
 
 formatIssue :: Issue -> String
-formatIssue i = printf "#%d: %s\n%s" (orBlank (id i)) (title i) (orBlank (url i))
+formatIssue i = printf "#%s: %s\n%s" (orBlank (id i)) (title i) (orBlank (url i))

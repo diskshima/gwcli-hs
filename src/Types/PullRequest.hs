@@ -18,4 +18,4 @@ data PullRequest = PullRequest {
 } deriving (Show)
 
 formatPullRequest :: PullRequest -> String
-formatPullRequest pr = printf "#%d: %s\n%s" (orBlank (id pr)) (title pr) (orBlank (url pr))
+formatPullRequest pr = printf "#%s: %s\n%s" (orBlank (id pr)) (title pr) (orBlank (url pr))
