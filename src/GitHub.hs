@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 module GitHub where
 
@@ -20,7 +21,8 @@ import           Network.Wreq           (Options, Response, defaults, getWith,
 import           Network.Wreq.Types     (Postable)
 import           Opener                 (openUrl)
 import           Text.Printf            (printf)
-import           Types                  (IssueDetails (..), PRDetails (..))
+import qualified Types.Issue            as I
+import qualified Types.PullRequest      as PR
 
 data IssueGet = IssueGet {
   issuegetNumber  :: Integer,
@@ -39,14 +41,14 @@ data IssuePost = IssuePost {
 instance ToJSON IssuePost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
-data PRPost = PRPost {
+data PullRequestPost = PullRequestPost {
   prpostTitle :: String,
   prpostHead  :: String,
   prpostBase  :: String,
   prpostBody  :: Maybe String
 } deriving (Show, Generic)
 
-instance ToJSON PRPost where
+instance ToJSON PullRequestPost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
 data Pull = Pull {
@@ -112,18 +114,14 @@ runItemQuery :: FromJSON a => Maybe String -> String -> (a -> String) -> IO Stri
 runItemQuery token suffix format = do
   maybeUrl <- buildUrl suffix
   case maybeUrl of
-    Just url -> do
-      item <- getGitHub token url
-      return $ maybe "" format (readItem item)
+    Just url -> maybe "" format . readItem <$> getGitHub token url
     Nothing  -> error "Could not identify remote URL."
 
 runListQuery :: FromJSON a => Maybe String -> String -> (a -> String) -> IO String
 runListQuery token suffix format = do
   maybeUrl <- buildUrl suffix
   case maybeUrl of
-    Just url -> do
-      items <- getItemsFromUrl token url
-      return $ intercalate "\n" (fmap format items)
+    Just url -> intercalate "\n" . fmap format <$> getItemsFromUrl token url
     Nothing  -> error "Could not identify remote URL."
 
 getIssue :: [String] -> Maybe String -> IO ()
@@ -131,8 +129,8 @@ getIssue sscmds token =
   runItemQuery token path formatIssue >>= putStrLn
     where path = "/issues/" ++ head sscmds
 
-getPR :: [String] -> Maybe String -> IO ()
-getPR sscmds token =
+getPullRequest :: [String] -> Maybe String -> IO ()
+getPullRequest sscmds token =
   runItemQuery token path formatPull >>= putStrLn
     where path = "/pulls/" ++ head sscmds
 
@@ -140,18 +138,16 @@ getIssues :: [String] -> Maybe String -> IO ()
 getIssues _ token =
   runListQuery token "/issues" formatIssue >>= putStrLn
 
-getPRs :: [String] -> Maybe String -> IO ()
-getPRs _ token =
+getPullRequests :: [String] -> Maybe String -> IO ()
+getPullRequests _ token =
   runListQuery token "/pulls" formatPull >>= putStrLn
 
-issueDetailsToIssuePost :: IssueDetails -> IssuePost
-issueDetailsToIssuePost issueDetails =
-  IssuePost (idTitle issueDetails) (idBody issueDetails)
+issueToIssuePost :: I.Issue -> IssuePost
+issueToIssuePost issue = IssuePost (I.title issue) (I.body issue)
 
-prDetailsToPRPost :: PRDetails -> PRPost
-prDetailsToPRPost prDetails =
-  PRPost (prTitle prDetails) (prSrcBranch prDetails) (prDestBranch prDetails)
-    (prBody prDetails)
+prToPullRequestPost :: PR.PullRequest -> PullRequestPost
+prToPullRequestPost pr =
+  PullRequestPost (PR.title pr) (PR.srcBranch pr) (PR.destBranch pr) (PR.body pr)
 
 runCreate :: (ToJSON a, FromJSON b) => Maybe String -> String -> a -> (b -> String) -> IO ()
 runCreate token suffix param format = do
@@ -162,13 +158,13 @@ runCreate token suffix param format = do
       putStrLn $ maybe "Failed to read response." format (readItem resp)
     Nothing -> error "Could not identify remote URL."
 
-createIssue :: IssueDetails -> Maybe String -> IO ()
+createIssue :: I.Issue -> Maybe String -> IO ()
 createIssue details token = runCreate token "/issues" param formatIssue
-  where param = issueDetailsToIssuePost details
+  where param = issueToIssuePost details
 
-createPR :: PRDetails -> Maybe String -> IO ()
-createPR details token = runCreate token "/pulls" param formatPull
-  where param = prDetailsToPRPost details
+createPullRequest :: PR.PullRequest -> Maybe String -> IO ()
+createPullRequest details token = runCreate token "/pulls" param formatPull
+  where param = prToPullRequestPost details
 
 open :: IO ()
 open = do
