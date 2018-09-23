@@ -1,13 +1,18 @@
-module Remote where
-import Types.Issue
-import Types.PullRequest
+module Remote
+  (
+    Remote(..),
+    Token
+  ) where
+
+import           Types.Issue
+import           Types.PullRequest
 
 type Token = String
 
 class Remote a where
   createIssue :: a -> Issue -> IO ()
-  getIssue :: a -> Token -> Issue
-  listIssues :: a -> Token -> [Issue]
+  getIssue :: a -> String -> IO Issue
+  listIssues :: a -> IO [Issue]
   createPullRequest :: a -> PullRequest -> IO ()
-  getPullRequest :: a -> Token -> PullRequest
-  listPullRequests :: a -> Token -> [PullRequest]
+  getPullRequest :: a -> String -> IO PullRequest
+  listPullRequests :: a -> IO [PullRequest]

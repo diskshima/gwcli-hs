@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module GitHub where
 
 import           Control.Lens.Operators ((.~), (^.))
@@ -11,7 +12,6 @@ import           Data.Aeson.Casing      (aesonPrefix, snakeCase)
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as U8
 import           Data.Function          ((&))
-import           Data.List              (intercalate)
 import           Data.Maybe             (fromMaybe)
 import           GHC.Generics
 import           GitUtils               (RepoInfo (..), repoInfoFromRepo)
@@ -23,9 +23,10 @@ import           Opener                 (openUrl)
 import           Text.Printf            (printf)
 import qualified Types.Issue            as I
 import qualified Types.PullRequest      as PR
+import           Remote                 (Remote (..), Token)
 
 data IssueGet = IssueGet {
-  issuegetNumber  :: Integer,
+  issuegetNumber  :: String,
   issuegetHtmlUrl :: String,
   issuegetTitle   :: String
 } deriving (Show, Generic)
@@ -42,23 +43,45 @@ instance ToJSON IssuePost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
 data PullRequestPost = PullRequestPost {
-  prpostTitle :: String,
-  prpostHead  :: String,
-  prpostBase  :: String,
-  prpostBody  :: Maybe String
+  pullrequestpostTitle :: String,
+  pullrequestpostHead  :: String,
+  pullrequestpostBase  :: String,
+  pullrequestpostBody  :: Maybe String
 } deriving (Show, Generic)
 
 instance ToJSON PullRequestPost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
-data Pull = Pull {
-  pullNumber  :: Integer,
-  pullHtmlUrl :: String,
-  pullTitle   :: String
+data PullRequestGet = PullRequestGet {
+  pullrequestgetNumber  :: String,
+  pullrequestgetHtmlUrl :: String,
+  pullrequestgetTitle   :: String
 } deriving (Show, Generic)
 
-instance FromJSON Pull where
+instance FromJSON PullRequestGet where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
+newtype GitHub = GitHub {
+  accessToken :: Token
+}
+
+instance Remote GitHub where
+  getIssue remote issueId = responseToIssue <$> runItemQuery token path
+      where path = "/issues/" ++ issueId
+            token = Just $ accessToken remote
+  listIssues remote = runListQuery token "/issues" responseToIssue
+      where token = Just $ accessToken remote
+  createIssue remote details = runCreate token "/issues" param
+    where param = issueToIssuePost details
+          token = Just $ accessToken remote
+  getPullRequest remote prId = responseToPullRequest <$> runItemQuery token path
+      where path = "/pulls/" ++ prId
+            token = Just $ accessToken remote
+  listPullRequests remote = runListQuery token "/pulls" responseToPullRequest
+      where token = Just $ accessToken remote
+  createPullRequest remote details = runCreate token "/pulls" param
+    where param = prToPullRequestPost details
+          token = Just $ accessToken remote
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"
@@ -80,11 +103,17 @@ postGitHub :: Postable a => Maybe String -> String -> a -> IO (Response BL.ByteS
 postGitHub token = postWith opt
   where opt = maybe defaults gitHubHeader token
 
-formatIssue :: IssueGet -> String
-formatIssue i = printf "#%d: %s\n%s" (issuegetNumber i) (issuegetTitle i) (issuegetHtmlUrl i)
+responseToIssue :: IssueGet -> I.Issue
+responseToIssue i =
+  I.Issue (Just $ issuegetNumber i) (issuegetTitle i) Nothing (Just $ issuegetHtmlUrl i)
 
-formatPull :: Pull -> String
-formatPull i = printf "#%d: %s\n%s" (pullNumber i) (pullTitle i) (pullHtmlUrl i)
+responseToPullRequest :: PullRequestGet -> PR.PullRequest
+responseToPullRequest pr =
+  PR.PullRequest (Just $ pullrequestgetNumber pr) (pullrequestgetTitle pr) "" "" Nothing Nothing
+
+formatPullRequest :: PullRequestGet -> String
+formatPullRequest i =
+  printf "#%d: %s\n%s" (pullrequestgetNumber i) (pullrequestgetTitle i) (pullrequestgetHtmlUrl i)
 
 readItem :: FromJSON a => Response BL.ByteString -> Maybe a
 readItem resp = decode (resp ^. responseBody)
@@ -110,37 +139,23 @@ buildUrl suffix = do
              Just ri -> Just (gitHubBaseUrl ++ reposPath ri ++ suffix)
              Nothing -> Nothing
 
-runItemQuery :: FromJSON a => Maybe String -> String -> (a -> String) -> IO String
-runItemQuery token suffix format = do
+runItemQuery :: FromJSON a => Maybe String -> String -> IO a
+runItemQuery token suffix = do
   maybeUrl <- buildUrl suffix
   case maybeUrl of
-    Just url -> maybe "" format . readItem <$> getGitHub token url
-    Nothing  -> error "Could not identify remote URL."
+    Just url -> do
+      maybeItem <- readItem <$> getGitHub token url
+      case maybeItem of
+        Just item -> return item
+        Nothing -> error "Failed to parse response."
+    Nothing -> error "Could not identify remote URL."
 
-runListQuery :: FromJSON a => Maybe String -> String -> (a -> String) -> IO String
-runListQuery token suffix format = do
+runListQuery :: FromJSON a => Maybe String -> String -> (a -> b) -> IO [b]
+runListQuery token suffix converter= do
   maybeUrl <- buildUrl suffix
   case maybeUrl of
-    Just url -> intercalate "\n" . fmap format <$> getItemsFromUrl token url
+    Just url -> fmap converter <$> getItemsFromUrl token url
     Nothing  -> error "Could not identify remote URL."
-
-getIssue :: [String] -> Maybe String -> IO ()
-getIssue sscmds token =
-  runItemQuery token path formatIssue >>= putStrLn
-    where path = "/issues/" ++ head sscmds
-
-getPullRequest :: [String] -> Maybe String -> IO ()
-getPullRequest sscmds token =
-  runItemQuery token path formatPull >>= putStrLn
-    where path = "/pulls/" ++ head sscmds
-
-getIssues :: [String] -> Maybe String -> IO ()
-getIssues _ token =
-  runListQuery token "/issues" formatIssue >>= putStrLn
-
-getPullRequests :: [String] -> Maybe String -> IO ()
-getPullRequests _ token =
-  runListQuery token "/pulls" formatPull >>= putStrLn
 
 issueToIssuePost :: I.Issue -> IssuePost
 issueToIssuePost issue = IssuePost (I.title issue) (I.body issue)
@@ -149,22 +164,16 @@ prToPullRequestPost :: PR.PullRequest -> PullRequestPost
 prToPullRequestPost pr =
   PullRequestPost (PR.title pr) (PR.srcBranch pr) (PR.destBranch pr) (PR.body pr)
 
-runCreate :: (ToJSON a, FromJSON b) => Maybe String -> String -> a -> (b -> String) -> IO ()
-runCreate token suffix param format = do
+runCreate :: (ToJSON a, FromJSON b) => Maybe String -> String -> a -> IO b
+runCreate token suffix param = do
   maybeUrl <- buildUrl suffix
   case maybeUrl of
     Just url -> do
-      resp <- postGitHub token url (toJSON param)
-      putStrLn $ maybe "Failed to read response." format (readItem resp)
+      maybeItem <- readItem <$> postGitHub token url (toJSON param)
+      case maybeItem of
+        Just item -> return item
+        Nothing -> error "Failed to parse response."
     Nothing -> error "Could not identify remote URL."
-
-createIssue :: I.Issue -> Maybe String -> IO ()
-createIssue details token = runCreate token "/issues" param formatIssue
-  where param = issueToIssuePost details
-
-createPullRequest :: PR.PullRequest -> Maybe String -> IO ()
-createPullRequest details token = runCreate token "/pulls" param formatPull
-  where param = prToPullRequestPost details
 
 open :: IO ()
 open = do
