@@ -1,6 +1,9 @@
 # gwcli-hs
 
-A command line tool for Git sites (GitHub, ZenHub).
+A command line tool for Git repository services like:
+- GitHub
+- BitBucket (not yet supported)
+- ZenHub (not yet supported)
 
 ## Setup
 1. Install `stack`
