@@ -72,6 +72,7 @@ handleIssue remote params =
       issues <- listIssues remote
       putStrLn $ formatEachAndJoin issues I.formatIssue
     "create" -> createIssue remote (paramToIssue rest)
+                  >>= (putStrLn . I.formatIssue)
     _      -> printError $ "Subcommand " ++ subsubcommand ++ " not supported"
     where subsubcommand = head params
           rest = tail params
@@ -79,11 +80,12 @@ handleIssue remote params =
 handlePullRequest :: Remote a => a -> [String] -> IO ()
 handlePullRequest remote params =
   case subsubcommand of
-    "show"   -> getPullRequest remote (rest !! 1) >>= (putStrLn . PR.formatPullRequest)
+    "show"   -> getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
     "list"   -> do
       prs <- listPullRequests remote
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
     "create" -> createPullRequest remote (paramsToPullRequest rest)
+                  >>= (putStrLn . PR.formatPullRequest)
     _        -> printError $ "Command " ++ subsubcommand ++ " not supported"
     where subsubcommand = head params
           rest = tail params

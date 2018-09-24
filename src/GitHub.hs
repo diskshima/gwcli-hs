@@ -53,7 +53,7 @@ instance ToJSON PullRequestPost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
 data PullRequestGet = PullRequestGet {
-  pullrequestgetNumber  :: String,
+  pullrequestgetNumber  :: Integer,
   pullrequestgetHtmlUrl :: String,
   pullrequestgetTitle   :: String
 } deriving (Show, Generic)
@@ -71,17 +71,19 @@ instance Remote GitHub where
             token = Just $ accessToken remote
   listIssues remote = runListQuery token "/issues" responseToIssue
       where token = Just $ accessToken remote
-  createIssue remote details = runCreate token "/issues" param
-    where param = issueToIssuePost details
-          token = Just $ accessToken remote
+  createIssue remote details =
+    responseToIssue <$> runCreate token "/issues" param
+      where param = issueToIssuePost details
+            token = Just $ accessToken remote
   getPullRequest remote prId = responseToPullRequest <$> runItemQuery token path
       where path = "/pulls/" ++ prId
             token = Just $ accessToken remote
   listPullRequests remote = runListQuery token "/pulls" responseToPullRequest
       where token = Just $ accessToken remote
-  createPullRequest remote details = runCreate token "/pulls" param
-    where param = prToPullRequestPost details
-          token = Just $ accessToken remote
+  createPullRequest remote details =
+    responseToPullRequest <$> runCreate token "/pulls" param
+      where param = prToPullRequestPost details
+            token = Just $ accessToken remote
   open _ = do
     maybeRi <- repoInfoFromRepo
     case maybeRi of
@@ -115,7 +117,7 @@ responseToIssue i =
 responseToPullRequest :: PullRequestGet -> PR.PullRequest
 responseToPullRequest pr =
   PR.PullRequest (Just . show $ pullrequestgetNumber pr) (pullrequestgetTitle pr)
-                 "" "" Nothing Nothing
+                 "" "" Nothing (Just $ pullrequestgetHtmlUrl pr)
 
 readItem :: FromJSON a => Response BL.ByteString -> Maybe a
 readItem resp = decode (resp ^. responseBody)
