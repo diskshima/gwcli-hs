@@ -7,6 +7,7 @@ module Main where
 import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
 import           GitHub                (GitHub (..))
+import           GitUtils              (getCurrentBranch)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
                                         nthOrNothing)
 import           Remote                (Remote, Token, createIssue,
@@ -57,12 +58,15 @@ paramToIssue params = I.Issue Nothing title body Nothing
   where title = head params
         body = nthOrNothing params 1
 
-paramsToPullRequest :: [String] -> PR.PullRequest
-paramsToPullRequest params = PR.PullRequest Nothing title src dest body Nothing
+paramsToPullRequest :: [String] -> IO PR.PullRequest
+paramsToPullRequest params = do
+  maybeBranch <- getCurrentBranch
+  case maybeBranch of
+    Just src -> return $ PR.PullRequest Nothing title src dest body Nothing
+    Nothing  -> error "Failed to retrieve source branch."
   where title = head params
-        src = params !! 1
-        dest = nthOrDefault params "master" 2
-        body = nthOrNothing params 3
+        dest = nthOrDefault params "master" 1
+        body = nthOrNothing params 2
 
 handleIssue :: Remote a => a -> [String] -> IO ()
 handleIssue remote params =
@@ -84,8 +88,10 @@ handlePullRequest remote params =
     "list"   -> do
       prs <- listPullRequests remote
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
-    "create" -> createPullRequest remote (paramsToPullRequest rest)
-                  >>= (putStrLn . PR.formatPullRequest)
+    "create" -> do
+      pr <- paramsToPullRequest rest
+      response <- createPullRequest remote pr
+      putStrLn $ PR.formatPullRequest response
     _        -> printError $ "Command " ++ subsubcommand ++ " not supported"
     where subsubcommand = head params
           rest = tail params
