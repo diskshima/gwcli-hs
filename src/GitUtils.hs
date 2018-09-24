@@ -33,12 +33,12 @@ getCurrentBranch = either (const Nothing) (Just . refNameRaw) <$> withCurrentRep
 
 getRemoteUrl :: IO (Maybe String)
 getRemoteUrl = do
-     maybePath <- findRepoMaybe
-     case maybePath of
-            Just path -> do
-                repo <- openRepo path
-                configGet repo (remoteSection "origin") "url"
-            Nothing -> return Nothing
+  maybePath <- findRepoMaybe
+  case maybePath of
+    Just path -> do
+      repo <- openRepo path
+      configGet repo (remoteSection "origin") "url"
+    Nothing   -> return Nothing
 
 remoteSection :: String -> String
 remoteSection = printf "remote \"%s\""
