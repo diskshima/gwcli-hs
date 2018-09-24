@@ -12,7 +12,7 @@ import           ListUtils             (formatEachAndJoin, nthOrDefault,
 import           Remote                (Remote, Token, createIssue,
                                         createPullRequest, getIssue,
                                         getPullRequest, listIssues,
-                                        listPullRequests)
+                                        listPullRequests, open)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
@@ -109,7 +109,7 @@ main = do
           case head n of
             "issue"       -> handleIssue remote (tail n)
             "pullrequest" -> handlePullRequest remote (tail n)
-            -- "browse"      -> open
+            "browse"      -> open remote
             "help"        -> handleHelp
             _             -> printError "Please specify subcommand"
         (_, _, errs) -> printError $ concat errs ++ usageInfo header options

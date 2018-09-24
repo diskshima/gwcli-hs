@@ -82,6 +82,11 @@ instance Remote GitHub where
   createPullRequest remote details = runCreate token "/pulls" param
     where param = prToPullRequestPost details
           token = Just $ accessToken remote
+  open _ = do
+    maybeRi <- repoInfoFromRepo
+    case maybeRi of
+      Just ri -> openUrl $ browserPath ri
+      Nothing -> error "Could not identify repo info."
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"
@@ -171,10 +176,3 @@ runCreate token suffix param = do
         Just item -> return item
         Nothing -> error "Failed to parse response."
     Nothing -> error "Could not identify remote URL."
-
-open :: IO ()
-open = do
-  maybeRi <- repoInfoFromRepo
-  case maybeRi of
-    Just ri -> openUrl $ browserPath ri
-    Nothing -> error "Could not identify repo info."
