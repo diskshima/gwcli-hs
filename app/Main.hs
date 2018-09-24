@@ -6,16 +6,21 @@ module Main where
 
 import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
-import           GitHub                (createIssue, createPR, getIssue,
-                                        getIssues, getPR, getPRs, open)
-import           ListUtils             (nthOrDefault, nthOrNothing)
+import           GitHub                (GitHub (..))
+import           ListUtils             (formatEachAndJoin, nthOrDefault,
+                                        nthOrNothing)
+import           Remote                (Remote, Token, createIssue,
+                                        createPullRequest, getIssue,
+                                        getPullRequest, listIssues,
+                                        listPullRequests, open)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
 import           System.Environment    (getArgs)
 import           System.FilePath       (joinPath)
 import           Text.RawString.QQ
-import           Types                 (IssueDetails (..), PRDetails (..))
+import qualified Types.Issue           as I
+import qualified Types.PullRequest     as PR
 
 data Flag =
   Help |
@@ -23,8 +28,8 @@ data Flag =
   Version
 
 data Credentials = Credentials {
-  zenhub :: String,
-  github :: String
+  github :: Token,
+  zenhub :: Token
 } deriving (Show, Generic)
 
 instance FromJSON Credentials
@@ -47,34 +52,40 @@ readCredential filepath = do
       return Nothing
     Right content -> return content
 
-paramToIssueDetails :: [String] -> IssueDetails
-paramToIssueDetails params = IssueDetails title body
+paramToIssue :: [String] -> I.Issue
+paramToIssue params = I.Issue Nothing title body Nothing
   where title = head params
         body = nthOrNothing params 1
 
-paramsToPRDetails :: [String] -> PRDetails
-paramsToPRDetails params = PRDetails title src dest body
+paramsToPullRequest :: [String] -> PR.PullRequest
+paramsToPullRequest params = PR.PullRequest Nothing title src dest body Nothing
   where title = head params
         src = params !! 1
         dest = nthOrDefault params "master" 2
         body = nthOrNothing params 3
 
-handleIssue :: [String] -> Maybe String -> IO ()
-handleIssue params token =
+handleIssue :: Remote a => a -> [String] -> IO ()
+handleIssue remote params =
   case subsubcommand of
-    "show"   -> getIssue rest token
-    "list"   -> getIssues rest token
-    "create" -> createIssue (paramToIssueDetails rest) token
+    "show"   -> getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
+    "list"   -> do
+      issues <- listIssues remote
+      putStrLn $ formatEachAndJoin issues I.formatIssue
+    "create" -> createIssue remote (paramToIssue rest)
+                  >>= (putStrLn . I.formatIssue)
     _      -> printError $ "Subcommand " ++ subsubcommand ++ " not supported"
     where subsubcommand = head params
           rest = tail params
 
-handlePR :: [String] -> Maybe String -> IO ()
-handlePR params token =
+handlePullRequest :: Remote a => a -> [String] -> IO ()
+handlePullRequest remote params =
   case subsubcommand of
-    "show"   -> getPR rest token
-    "list"   -> getPRs rest token
-    "create" -> createPR (paramsToPRDetails rest) token
+    "show"   -> getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
+    "list"   -> do
+      prs <- listPullRequests remote
+      putStrLn $ formatEachAndJoin prs PR.formatPullRequest
+    "create" -> createPullRequest remote (paramsToPullRequest rest)
+                  >>= (putStrLn . PR.formatPullRequest)
     _        -> printError $ "Command " ++ subsubcommand ++ " not supported"
     where subsubcommand = head params
           rest = tail params
@@ -91,13 +102,17 @@ main = do
   args <- getArgs
   homeDir <- getHomeDirectory
   cred <- readCredential $ joinPath [homeDir, ".gwcli.yaml"]
-  case getOpt RequireOrder options args of
-    (_, n, [])   ->
-      case head n of
-        "issue"       -> handleIssue (tail n) (fmap github cred)
-        "pullrequest" -> handlePR (tail n) (fmap github cred)
-        "browse"      -> open
-        "help"        -> handleHelp
-        _             -> printError "Please specify subcommand"
-    (_, _, errs) -> printError $ concat errs ++ usageInfo header options
-  where header = "Usage: gwcli subcommand"
+  case cred of
+    Nothing -> printError "Failed to read credentials file."
+    Just c -> do
+      let remote = GitHub $ github c
+      case getOpt RequireOrder options args of
+        (_, n, [])   ->
+          case head n of
+            "issue"       -> handleIssue remote (tail n)
+            "pullrequest" -> handlePullRequest remote (tail n)
+            "browse"      -> open remote
+            "help"        -> handleHelp
+            _             -> printError "Please specify subcommand"
+        (_, _, errs) -> printError $ concat errs ++ usageInfo header options
+      where header = "Usage: gwcli subcommand"
