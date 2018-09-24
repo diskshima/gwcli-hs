@@ -3,10 +3,12 @@ module GitUtils
     RepoInfo(..)
   , repoInfoFromRepo
   , getRemoteUrl
+  , getCurrentBranch
   ) where
 
-import           Data.Git.Repository (configGet)
-import           Data.Git.Storage    (findRepoMaybe, openRepo)
+import           Data.Git            (refNameRaw)
+import           Data.Git.Repository (configGet, headGet)
+import           Data.Git.Storage    (findRepoMaybe, openRepo, withCurrentRepo)
 import           Data.List           (isPrefixOf, isSuffixOf)
 import           Data.String.Utils   (replace)
 import           Network.URI         (parseURI, pathSegments)
@@ -17,6 +19,8 @@ data RepoInfo = RepoInfo {
   repository   :: String
 } deriving (Show)
 
+type Branch = String
+
 repoInfoFromRepo :: IO (Maybe RepoInfo)
 repoInfoFromRepo = do
   maybeUrl <- getRemoteUrl
@@ -24,14 +28,17 @@ repoInfoFromRepo = do
              Just uri -> urlToRepoInfo uri
              Nothing  -> Nothing
 
+getCurrentBranch :: IO (Maybe Branch)
+getCurrentBranch = either (const Nothing) (Just . refNameRaw) <$> withCurrentRepo headGet
+
 getRemoteUrl :: IO (Maybe String)
 getRemoteUrl = do
-  maybePath <- findRepoMaybe
-  case maybePath of
-    Just path -> do
-      repo <- openRepo path
-      configGet repo (remoteSection "origin") "url"
-    Nothing   -> return Nothing
+     maybePath <- findRepoMaybe
+     case maybePath of
+            Just path -> do
+                repo <- openRepo path
+                configGet repo (remoteSection "origin") "url"
+            Nothing -> return Nothing
 
 remoteSection :: String -> String
 remoteSection = printf "remote \"%s\""
