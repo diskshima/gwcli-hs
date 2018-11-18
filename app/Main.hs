@@ -41,6 +41,17 @@ options = [
   Option ['h']["help"] (NoArg Help) "Help"
           ]
 
+newtype IssueOptions = IssueOptions { optAll :: Bool }
+issueOptions :: [OptDescr (IssueOptions -> IssueOptions)]
+issueOptions =
+  [ Option ['a']["all"]
+      (NoArg (\opts -> opts { optAll = True }))
+       "show all issues"
+  ]
+
+defaultIssueOptions :: IssueOptions
+defaultIssueOptions = IssueOptions { optAll = False }
+
 printError :: String -> IO ()
 printError = ioError . userError
 
@@ -73,8 +84,10 @@ handleIssue remote params =
   case subsubcommand of
     "show"   -> getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
     "list"   -> do
-      issues <- listIssues remote
+      issues <- listIssues remote issueAll
       putStrLn $ formatEachAndJoin issues I.formatIssue
+        where (parsed, _, _) = getOpt RequireOrder issueOptions rest
+              IssueOptions { optAll = issueAll } = foldl (flip id) defaultIssueOptions parsed
     "create" -> createIssue remote (paramToIssue rest)
                   >>= (putStrLn . I.formatIssue)
     _      -> printError $ "Subcommand " ++ subsubcommand ++ " not supported"

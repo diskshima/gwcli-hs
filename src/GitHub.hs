@@ -15,6 +15,7 @@ import           Data.Function          ((&))
 import           Data.Maybe             (fromMaybe)
 import           GHC.Generics
 import           GitUtils               (RepoInfo (..), repoInfoFromRepo)
+import           Network.HTTP.Types.URI (renderQuery)
 import           Network.Wreq           (Options, Response, defaults, getWith,
                                          header, linkURL, postWith,
                                          responseBody, responseLink)
@@ -78,7 +79,7 @@ instance Remote GitHub where
   getPullRequest remote prId = responseToPullRequest <$> runItemQuery token path
       where path = "/pulls/" ++ prId
             token = Just $ accessToken remote
-  listPullRequests remote = runListQuery token "/pulls" responseToPullRequest
+  listPullRequests remote = runListQuery token "/pulls" responseToPullRequest False
       where token = Just $ accessToken remote
   createPullRequest remote details =
     responseToPullRequest <$> runCreate token "/pulls" param
@@ -136,16 +137,21 @@ getItemsFromUrl token url = do
   nextItems <- getItemsFromUrl token (U8.toString (readNextLink resp))
   return $ readItems resp ++ nextItems
 
-buildUrl :: String -> IO (Maybe String)
-buildUrl suffix = do
+type ParamList = [(U8.ByteString, Maybe U8.ByteString)]
+
+buildUrl :: String -> Maybe ParamList -> IO (Maybe String)
+buildUrl suffix maybeParams = do
   maybeRi <- repoInfoFromRepo
   return $ case maybeRi of
-             Just ri -> Just (gitHubBaseUrl ++ reposPath ri ++ suffix)
+             Just ri -> Just (gitHubBaseUrl ++ reposPath ri ++ suffix ++ query)
              Nothing -> Nothing
+    where query = case maybeParams of
+                    Just params -> U8.toString $ renderQuery True params
+                    Nothing -> ""
 
 runItemQuery :: FromJSON a => Maybe String -> String -> IO a
 runItemQuery token suffix = do
-  maybeUrl <- buildUrl suffix
+  maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
     Just url -> do
       maybeItem <- readItem <$> getGitHub token url
@@ -154,12 +160,18 @@ runItemQuery token suffix = do
         Nothing -> error "Failed to parse response."
     Nothing -> error "Could not identify remote URL."
 
-runListQuery :: FromJSON a => Maybe String -> String -> (a -> b) -> IO [b]
-runListQuery token suffix converter= do
-  maybeUrl <- buildUrl suffix
+toParamList :: [(String, String)] -> ParamList
+toParamList = map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
+
+runListQuery :: FromJSON a => Maybe String -> String -> (a -> b) -> Bool -> IO [b]
+runListQuery token suffix converter showAll = do
+  maybeUrl <- buildUrl suffix params
   case maybeUrl of
     Just url -> fmap converter <$> getItemsFromUrl token url
     Nothing  -> error "Could not identify remote URL."
+  where params = if showAll
+                    then (Just . toParamList) [("filter", "all"), ("state", "all")]
+                    else Nothing
 
 issueToIssuePost :: I.Issue -> IssuePost
 issueToIssuePost issue = IssuePost (I.title issue) (I.body issue)
@@ -170,7 +182,7 @@ prToPullRequestPost pr =
 
 runCreate :: (ToJSON a, FromJSON b) => Maybe String -> String -> a -> IO b
 runCreate token suffix param = do
-  maybeUrl <- buildUrl suffix
+  maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
     Just url -> do
       maybeItem <- readItem <$> postGitHub token url (toJSON param)
