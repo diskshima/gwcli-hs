@@ -26,45 +26,43 @@ import           Text.Printf            (printf)
 import qualified Types.Issue            as I
 import qualified Types.PullRequest      as PR
 
-data IssueGet = IssueGet {
-  issuegetNumber  :: Integer,
-  issuegetHtmlUrl :: String,
-  issuegetTitle   :: String
-} deriving (Show, Generic)
+data IssueGet = IssueGet
+  { issuegetNumber  :: Integer
+  , issuegetHtmlUrl :: String
+  , issuegetTitle   :: String
+  } deriving (Show, Generic)
 
 instance FromJSON IssueGet where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
-data IssuePost = IssuePost {
-  issuepostTitle :: String,
-  issuepostBody  :: Maybe String
-} deriving (Show, Generic)
+data IssuePost = IssuePost
+  { issuepostTitle :: String
+  , issuepostBody  :: Maybe String
+  } deriving (Show, Generic)
 
 instance ToJSON IssuePost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
-data PullRequestPost = PullRequestPost {
-  pullrequestpostTitle :: String,
-  pullrequestpostHead  :: String,
-  pullrequestpostBase  :: String,
-  pullrequestpostBody  :: Maybe String
-} deriving (Show, Generic)
+data PullRequestPost = PullRequestPost
+  { pullrequestpostTitle :: String
+  , pullrequestpostHead  :: String
+  , pullrequestpostBase  :: String
+  , pullrequestpostBody  :: Maybe String
+  } deriving (Show, Generic)
 
 instance ToJSON PullRequestPost where
   toJSON = genericToJSON $ aesonPrefix snakeCase
 
-data PullRequestGet = PullRequestGet {
-  pullrequestgetNumber  :: Integer,
-  pullrequestgetHtmlUrl :: String,
-  pullrequestgetTitle   :: String
-} deriving (Show, Generic)
+data PullRequestGet = PullRequestGet
+  { pullrequestgetNumber  :: Integer
+  , pullrequestgetHtmlUrl :: String
+  , pullrequestgetTitle   :: String
+  } deriving (Show, Generic)
 
 instance FromJSON PullRequestGet where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
-newtype GitHub = GitHub {
-  accessToken :: Token
-}
+newtype GitHub = GitHub { accessToken :: Token }
 
 instance Remote GitHub where
   getIssue remote issueId = responseToIssue <$> runItemQuery token path
