@@ -27,6 +27,7 @@ dependencies:
 - directory
 - filepath
 - git
+- http-types
 - lens
 - MissingH
 - network-uri

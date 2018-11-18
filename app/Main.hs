@@ -41,6 +41,28 @@ options = [
   Option ['h']["help"] (NoArg Help) "Help"
           ]
 
+newtype IssueOptions = IssueOptions { iOptAll :: Bool }
+issueOptions :: [OptDescr (IssueOptions -> IssueOptions)]
+issueOptions =
+  [ Option ['a']["all"]
+      (NoArg (\opts -> opts { iOptAll = True }))
+       "show all issues"
+  ]
+
+defaultIssueOptions :: IssueOptions
+defaultIssueOptions = IssueOptions { iOptAll = False }
+
+newtype PullRequestOptions = PullRequestOptions { prOptAll :: Bool }
+pullRequestOptions :: [OptDescr (PullRequestOptions -> PullRequestOptions)]
+pullRequestOptions =
+  [ Option ['a']["all"]
+      (NoArg (\opts -> opts { prOptAll = True }))
+       "show all pull requests"
+  ]
+
+defaultPullRequestOptions :: PullRequestOptions
+defaultPullRequestOptions = PullRequestOptions { prOptAll = False }
+
 printError :: String -> IO ()
 printError = ioError . userError
 
@@ -73,8 +95,10 @@ handleIssue remote params =
   case subsubcommand of
     "show"   -> getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
     "list"   -> do
-      issues <- listIssues remote
+      issues <- listIssues remote showAll
       putStrLn $ formatEachAndJoin issues I.formatIssue
+        where (parsed, _, _) = getOpt RequireOrder issueOptions rest
+              IssueOptions { iOptAll = showAll } = foldl (flip id) defaultIssueOptions parsed
     "create" -> createIssue remote (paramToIssue rest)
                   >>= (putStrLn . I.formatIssue)
     _      -> printError $ "Subcommand " ++ subsubcommand ++ " not supported"
@@ -86,8 +110,10 @@ handlePullRequest remote params =
   case subsubcommand of
     "show"   -> getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
     "list"   -> do
-      prs <- listPullRequests remote
+      prs <- listPullRequests remote showAll
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
+        where (parsed, _, _) = getOpt RequireOrder pullRequestOptions rest
+              PullRequestOptions { prOptAll = showAll } = foldl (flip id) defaultPullRequestOptions parsed
     "create" -> do
       pr <- paramsToPullRequest rest
       response <- createPullRequest remote pr
