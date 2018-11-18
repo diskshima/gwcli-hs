@@ -23,23 +23,20 @@ import           Text.RawString.QQ
 import qualified Types.Issue           as I
 import qualified Types.PullRequest     as PR
 
-data Flag =
-  Help |
-  Verbose |
-  Version
+data Flag = Help | Verbose | Version
 
-data Credentials = Credentials {
-  github :: Token,
-  zenhub :: Token
-} deriving (Show, Generic)
+data Credentials = Credentials
+  { github :: Token
+  , zenhub :: Token
+  } deriving (Show, Generic)
 
 instance FromJSON Credentials
 
 options :: [OptDescr Flag]
-options = [
-  Option ['v']["verbose"] (NoArg Verbose) "Verbose output",
-  Option ['h']["help"] (NoArg Help) "Help"
-          ]
+options =
+  [ Option ['v']["verbose"] (NoArg Verbose) "Verbose output"
+  , Option ['h']["help"] (NoArg Help) "Help"
+  ]
 
 newtype IssueOptions = IssueOptions { iOptAll :: Bool }
 issueOptions :: [OptDescr (IssueOptions -> IssueOptions)]
