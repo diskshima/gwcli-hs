@@ -15,5 +15,5 @@ class Remote a where
   listIssues :: a -> Bool -> IO [Issue]
   createPullRequest :: a -> PullRequest -> IO PullRequest
   getPullRequest :: a -> String -> IO PullRequest
-  listPullRequests :: a -> IO [PullRequest]
+  listPullRequests :: a -> Bool -> IO [PullRequest]
   open :: a -> IO ()

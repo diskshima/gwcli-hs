@@ -79,7 +79,7 @@ instance Remote GitHub where
   getPullRequest remote prId = responseToPullRequest <$> runItemQuery token path
       where path = "/pulls/" ++ prId
             token = Just $ accessToken remote
-  listPullRequests remote = runListQuery token "/pulls" responseToPullRequest False
+  listPullRequests remote = runListQuery token "/pulls" responseToPullRequest
       where token = Just $ accessToken remote
   createPullRequest remote details =
     responseToPullRequest <$> runCreate token "/pulls" param
