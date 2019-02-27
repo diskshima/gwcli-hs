@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 module GitHub where
 
@@ -62,32 +62,46 @@ data PullRequestGet = PullRequestGet
 instance FromJSON PullRequestGet where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
-newtype GitHub = GitHub { accessToken :: Token }
+getIssue :: Remote -> String -> IO I.Issue
+getIssue (GitHub token) issueId = responseToIssue <$> runItemQuery token path
+    where path = "/issues/" ++ issueId
+getIssue (Bitbucket _) _ = undefined
 
-instance Remote GitHub where
-  getIssue remote issueId = responseToIssue <$> runItemQuery token path
-      where path = "/issues/" ++ issueId
-            token = Just $ accessToken remote
-  listIssues remote = runListQuery token "/issues" responseToIssue
-      where token = Just $ accessToken remote
-  createIssue remote details =
-    responseToIssue <$> runCreate token "/issues" param
-      where param = issueToIssuePost details
-            token = Just $ accessToken remote
-  getPullRequest remote prId = responseToPullRequest <$> runItemQuery token path
-      where path = "/pulls/" ++ prId
-            token = Just $ accessToken remote
-  listPullRequests remote = runListQuery token "/pulls" responseToPullRequest
-      where token = Just $ accessToken remote
-  createPullRequest remote details =
-    responseToPullRequest <$> runCreate token "/pulls" param
-      where param = prToPullRequestPost details
-            token = Just $ accessToken remote
-  open _ = do
-    maybeRi <- repoInfoFromRepo
-    case maybeRi of
-      Just ri -> openUrl $ browserPath ri
-      Nothing -> error "Could not identify repo info."
+listIssues :: Remote -> Bool -> IO [I.Issue]
+listIssues (GitHub token) = runListQuery token "/issues" responseToIssue
+listIssues (Bitbucket _)  = undefined
+
+createIssue :: Remote -> I.Issue -> IO I.Issue
+createIssue (GitHub token) details =
+  responseToIssue <$> runCreate token "/issues" param
+    where param = issueToIssuePost details
+createIssue (Bitbucket _) _ = undefined
+
+getPullRequest :: Remote -> String -> IO PR.PullRequest
+getPullRequest (GitHub token) prId = responseToPullRequest <$> runItemQuery token path
+    where path = "/pulls/" ++ prId
+getPullRequest (Bitbucket _) _ = undefined
+
+listPullRequests :: Remote -> Bool -> IO [PR.PullRequest]
+listPullRequests (GitHub token) = runListQuery token "/pulls" responseToPullRequest
+listPullRequests (Bitbucket _) = undefined
+
+createPullRequest :: Remote -> PR.PullRequest -> IO PR.PullRequest
+createPullRequest (GitHub token) details =
+  responseToPullRequest <$> runCreate token "/pulls" param
+    where param = prToPullRequestPost details
+createPullRequest (Bitbucket _) _ = undefined
+
+open :: Remote -> IO ()
+open remote = do
+  maybeRi <- repoInfoFromRepo
+  case maybeRi of
+    Just ri -> openUrl $ browserPath ri remote
+    Nothing -> error "Could not identify repo info."
+
+browserPath :: RepoInfo -> Remote -> String
+browserPath ri (GitHub _) = printf "https://github.com/%s/%s" (organization ri) (repository ri)
+browserPath ri (Bitbucket _) = printf "https://bitbucket.org/%s/%s" (organization ri) (repository ri)
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"
@@ -95,19 +109,14 @@ gitHubBaseUrl = "https://api.github.com"
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repos/%s/%s" (organization ri) (repository ri)
 
-browserPath :: RepoInfo -> String
-browserPath ri = printf "https://github.com/%s/%s" (organization ri) (repository ri)
-
-gitHubHeader :: String -> Options
+gitHubHeader :: Token -> Options
 gitHubHeader token = defaults & header "Authorization" .~ [U8.fromString $ "token " ++ token]
 
-getGitHub :: Maybe String -> String -> IO (Response BL.ByteString)
-getGitHub token = getWith opt
-  where opt = maybe defaults gitHubHeader token
+getGitHub :: Token -> String -> IO (Response BL.ByteString)
+getGitHub token = getWith $ gitHubHeader token
 
-postGitHub :: Postable a => Maybe String -> String -> a -> IO (Response BL.ByteString)
-postGitHub token = postWith opt
-  where opt = maybe defaults gitHubHeader token
+postGitHub :: Postable a => Token -> String -> a -> IO (Response BL.ByteString)
+postGitHub token = postWith $ gitHubHeader token
 
 responseToIssue :: IssueGet -> I.Issue
 responseToIssue i =
@@ -128,7 +137,7 @@ readItems resp = fromMaybe [] items
 readNextLink :: Response BL.ByteString -> U8.ByteString
 readNextLink resp = resp ^. responseLink "rel" "next" . linkURL
 
-getItemsFromUrl :: FromJSON a => Maybe String -> String -> IO [a]
+getItemsFromUrl :: FromJSON a => Token -> String -> IO [a]
 getItemsFromUrl _ "" = return []
 getItemsFromUrl token url = do
   resp <- getGitHub token url
@@ -145,9 +154,9 @@ buildUrl suffix maybeParams = do
              Nothing -> Nothing
     where query = case maybeParams of
                     Just params -> U8.toString $ renderQuery True params
-                    Nothing -> ""
+                    Nothing     -> ""
 
-runItemQuery :: FromJSON a => Maybe String -> String -> IO a
+runItemQuery :: FromJSON a => Token -> String -> IO a
 runItemQuery token suffix = do
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
@@ -155,13 +164,13 @@ runItemQuery token suffix = do
       maybeItem <- readItem <$> getGitHub token url
       case maybeItem of
         Just item -> return item
-        Nothing -> error "Failed to parse response."
+        Nothing   -> error "Failed to parse response."
     Nothing -> error "Could not identify remote URL."
 
 toParamList :: [(String, String)] -> ParamList
 toParamList = map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
 
-runListQuery :: FromJSON a => Maybe String -> String -> (a -> b) -> Bool -> IO [b]
+runListQuery :: FromJSON a => Token -> String -> (a -> b) -> Bool -> IO [b]
 runListQuery token suffix converter showAll = do
   maybeUrl <- buildUrl suffix params
   case maybeUrl of
@@ -178,7 +187,7 @@ prToPullRequestPost :: PR.PullRequest -> PullRequestPost
 prToPullRequestPost pr =
   PullRequestPost (PR.title pr) (PR.srcBranch pr) (PR.destBranch pr) (PR.body pr)
 
-runCreate :: (ToJSON a, FromJSON b) => Maybe String -> String -> a -> IO b
+runCreate :: (ToJSON a, FromJSON b) => Token -> String -> a -> IO b
 runCreate token suffix param = do
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
@@ -186,5 +195,5 @@ runCreate token suffix param = do
       maybeItem <- readItem <$> postGitHub token url (toJSON param)
       case maybeItem of
         Just item -> return item
-        Nothing -> error "Failed to parse response."
+        Nothing   -> error "Failed to parse response."
     Nothing -> error "Could not identify remote URL."

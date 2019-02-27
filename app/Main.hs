@@ -4,16 +4,16 @@
 
 module Main where
 
+import           Data.List             (isInfixOf)
 import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
-import           GitHub                (GitHub (..))
-import           GitUtils              (getCurrentBranch)
+import           GitHub                (createIssue, createPullRequest,
+                                        getIssue, getPullRequest, listIssues,
+                                        listPullRequests, open)
+import           GitUtils              (getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
                                         nthOrNothing)
-import           Remote                (Remote, Token, createIssue,
-                                        createPullRequest, getIssue,
-                                        getPullRequest, listIssues,
-                                        listPullRequests, open)
+import           Remote                (Remote (..), Token)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
@@ -26,8 +26,8 @@ import qualified Types.PullRequest     as PR
 data Flag = Help | Verbose | Version
 
 data Credentials = Credentials
-  { github :: Token
-  , zenhub :: Token
+  { github    :: Token
+  , bitbucket :: Token
   } deriving (Show, Generic)
 
 instance FromJSON Credentials
@@ -87,7 +87,7 @@ paramsToPullRequest params = do
         dest = nthOrDefault params "master" 1
         body = nthOrNothing params 2
 
-handleIssue :: Remote a => a -> [String] -> IO ()
+handleIssue :: Remote -> [String] -> IO ()
 handleIssue remote params =
   case subsubcommand of
     "show"   -> getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
@@ -102,7 +102,7 @@ handleIssue remote params =
     where subsubcommand = head params
           rest = tail params
 
-handlePullRequest :: Remote a => a -> [String] -> IO ()
+handlePullRequest :: Remote -> [String] -> IO ()
 handlePullRequest remote params =
   case subsubcommand of
     "show"   -> getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
@@ -119,6 +119,19 @@ handlePullRequest remote params =
     where subsubcommand = head params
           rest = tail params
 
+remoteUrlToRemote :: String -> Credentials -> Remote
+remoteUrlToRemote url cred
+  | "bitbucket.org" `isInfixOf` url = Bitbucket (bitbucket cred)
+  | "github.com"    `isInfixOf` url = GitHub (github cred)
+  | otherwise = error "Could not determine remote URL"
+
+chooseRemote :: Credentials -> IO Remote
+chooseRemote c = do
+  remoteUrl <- getRemoteUrl
+  case remoteUrl of
+    Nothing  -> error "Could not determine remote URL."
+    Just url -> return $ remoteUrlToRemote url c
+
 handleHelp :: IO ()
 handleHelp = putStr [r|issue create|show|list
 pullrequest create|show|list
@@ -134,7 +147,7 @@ main = do
   case cred of
     Nothing -> printError "Failed to read credentials file."
     Just c -> do
-      let remote = GitHub $ github c
+      remote <- chooseRemote c
       case getOpt RequireOrder options args of
         (_, n, [])   ->
           case head n of

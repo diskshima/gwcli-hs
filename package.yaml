@@ -27,6 +27,7 @@ dependencies:
 - directory
 - filepath
 - git
+- hoauth2
 - http-types
 - lens
 - MissingH
