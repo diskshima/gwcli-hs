@@ -34,6 +34,8 @@ dependencies:
 - network-uri
 - process
 - raw-strings-qq
+- text
+- uri-bytestring
 - utf8-string
 - wreq
 - yaml

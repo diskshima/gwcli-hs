@@ -7,8 +7,9 @@ module Main where
 import           Data.List             (isInfixOf)
 import           Data.Yaml             (FromJSON, decodeFileEither)
 import           GHC.Generics
-import           GitHub                (createIssue, createPullRequest,
-                                        getIssue, getPullRequest, listIssues,
+import           GitHub                (authenticate, createIssue,
+                                        createPullRequest, getIssue,
+                                        getPullRequest, listIssues,
                                         listPullRequests, open)
 import           GitUtils              (getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
@@ -133,7 +134,9 @@ chooseRemote c = do
     Just url -> return $ remoteUrlToRemote url c
 
 handleHelp :: IO ()
-handleHelp = putStr [r|issue create|show|list
+handleHelp = putStr [r|
+auth
+issue create|show|list
 pullrequest create|show|list
 browse
 help
@@ -151,6 +154,7 @@ main = do
       case getOpt RequireOrder options args of
         (_, n, [])   ->
           case head n of
+            "auth"        -> authenticate remote
             "issue"       -> handleIssue remote (tail n)
             "pullrequest" -> handlePullRequest remote (tail n)
             "browse"      -> open remote
