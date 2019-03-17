@@ -28,9 +28,11 @@ dependencies:
 - filepath
 - git
 - hoauth2
+- HTTP
 - http-types
 - lens
 - MissingH
+- network
 - network-uri
 - process
 - raw-strings-qq
