@@ -3,7 +3,9 @@
 -- Taken from: https://stackoverflow.com/a/37824454
 {-# LANGUAGE RecordWildCards #-}
 
+import           Data.ByteString.UTF8   (fromString)
 import           Network.HTTP
+import           Network.HTTP.Types.URI (parseQuery)
 import           Network.Socket
 import           Network.URI
 
@@ -24,5 +26,7 @@ main = do
                             respondHTTP hs $ Response (2,0,0) "OK" [] "Hello HTTP"
                             Network.HTTP.close hs
                           else do
+                            print $ uriPath rqURI
+                            print $ parseQuery $ fromString $ uriQuery rqURI
                             respondHTTP hs $ Response (4,0,4) "Not found" [] "Nothing here"
                             Network.HTTP.close hs
