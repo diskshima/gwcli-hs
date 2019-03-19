@@ -34,6 +34,7 @@ import qualified Types.Issue                  as I
 import qualified Types.PullRequest            as PR
 import           URI.ByteString               (serializeURIRef)
 import           URI.ByteString.QQ
+import           WebUtils                     (receiveWebRequest)
 
 data IssueGet = IssueGet
   { issuegetNumber  :: Integer
@@ -136,10 +137,8 @@ authenticate (Bitbucket _) = do
           let authUrl = BL8.unpack $ toLazyByteString $ serializeURIRef $ authorizationUrl oauth2Key
           Prelude.putStrLn "Please access the below URL:"
           Prelude.putStrLn authUrl
-          startWebServer "8080"
-
-startWebServer :: String -> IO ()
-startWebServer _url = undefined
+          queryItems <- receiveWebRequest 8080
+          print queryItems
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"

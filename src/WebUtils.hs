@@ -28,13 +28,8 @@ receiveWebRequest portNum = do
     Left _ -> error "Receiving request failed"
     Right Request {..} -> do
       let queryItems = parseQuery $ fromString $ uriQuery rqURI
-      if uriPath rqURI == "/"
-        then do
-          respondHTTP hs $ Response (2,0,0) "OK" [] "Hello HTTP"
-          Network.HTTP.close hs
-        else do
-          respondHTTP hs $ Response (4,0,4) "Not found" [] "Nothing here"
-          Network.HTTP.close hs
+      respondHTTP hs $ Response (2,0,0) "OK" [] "OK"
+      Network.HTTP.close hs
       return queryItems
 
 -- main :: IO ()
