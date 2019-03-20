@@ -29,6 +29,7 @@ dependencies:
 - git
 - hoauth2
 - HTTP
+- http-conduit
 - http-types
 - lens
 - MissingH
@@ -36,6 +37,7 @@ dependencies:
 - network-uri
 - process
 - raw-strings-qq
+- string-conversions
 - text
 - uri-bytestring
 - utf8-string

@@ -5,36 +5,44 @@
 
 module GitHub where
 
-import           Control.Lens.Operators       ((.~), (^.))
-import           Data.Aeson                   (FromJSON (parseJSON),
-                                               ToJSON (toJSON), decode,
-                                               genericParseJSON, genericToJSON)
-import           Data.Aeson.Casing            (aesonPrefix, snakeCase)
-import qualified Data.ByteString.Lazy         as BL
-import           Data.ByteString.Lazy.Builder (toLazyByteString)
-import           Data.ByteString.Lazy.Char8   as BL8
-import qualified Data.ByteString.UTF8         as U8
-import           Data.Function                ((&))
-import           Data.Maybe                   (fromMaybe)
-import           Data.Text.Lazy               as TL
+import           Control.Lens.Operators          ((.~), (^.))
+import           Data.Aeson                      (FromJSON (parseJSON),
+                                                  ToJSON (toJSON), decode,
+                                                  genericParseJSON,
+                                                  genericToJSON)
+import           Data.Aeson.Casing               (aesonPrefix, snakeCase)
+import qualified Data.ByteString.Lazy            as BL
+import           Data.ByteString.Lazy.Builder    (toLazyByteString)
+import           Data.ByteString.Lazy.Char8      as BL8
+import qualified Data.ByteString.UTF8            as U8
+import           Data.Function                   ((&))
+import           Data.Maybe                      (fromMaybe)
+import           Data.String.Conversions         (convertString)
+import           Data.Text.Lazy                  as TL
 import           GHC.Generics
-import           GitUtils                     (RepoInfo (..), repoInfoFromRepo)
-import           Network.HTTP.Types.URI       (renderQuery)
-import           Network.OAuth.OAuth2         (OAuth2 (..), authorizationUrl)
-import           Network.Wreq                 (Options, Response, defaults,
-                                               getWith, header, linkURL,
-                                               postWith, responseBody,
-                                               responseLink)
-import           Network.Wreq.Types           (Postable)
-import           Opener                       (openUrl)
-import           Remote                       (Remote (..), Token)
-import           System.Environment           (lookupEnv)
-import           Text.Printf                  (printf)
-import qualified Types.Issue                  as I
-import qualified Types.PullRequest            as PR
-import           URI.ByteString               (serializeURIRef)
+import           GitUtils                        (RepoInfo (..),
+                                                  repoInfoFromRepo)
+import           Network.HTTP.Conduit            (newManager,
+                                                  tlsManagerSettings)
+import           Network.HTTP.Types.URI          (QueryItem, renderQuery)
+import           Network.OAuth.OAuth2            (ExchangeToken (..),
+                                                  OAuth2 (..), authorizationUrl)
+import           Network.OAuth.OAuth2.HttpClient (fetchAccessToken)
+import           Network.Wreq                    (Options, Response, defaults,
+                                                  getWith, header, linkURL,
+                                                  postWith, responseBody,
+                                                  responseLink)
+import           Network.Wreq.Types              (Postable)
+import           Opener                          (openUrl)
+import           Prelude                         as P
+import           Remote                          (Remote (..), Token)
+import           System.Environment              (lookupEnv)
+import           Text.Printf                     (printf)
+import qualified Types.Issue                     as I
+import qualified Types.PullRequest               as PR
+import           URI.ByteString                  (serializeURIRef)
 import           URI.ByteString.QQ
-import           WebUtils                     (receiveWebRequest)
+import           WebUtils                        (receiveWebRequest)
 
 data IssueGet = IssueGet
   { issuegetNumber  :: Integer
@@ -107,7 +115,7 @@ open remote = do
   maybeRi <- repoInfoFromRepo
   case maybeRi of
     Just ri -> openUrl $ browserPath ri remote
-    Nothing -> Prelude.error "Could not identify repo info."
+    Nothing -> P.error "Could not identify repo info."
 
 browserPath :: RepoInfo -> Remote -> String
 browserPath ri (GitHub _) = printf "https://github.com/%s/%s" (organization ri) (repository ri)
@@ -122,6 +130,19 @@ bitbucketKey clientId clientSecret =
           , oauthAccessTokenEndpoint = [uri|https://bitbucket.org/site/oauth2/access_token|]
 }
 
+fetchOAuth2AccessToken :: OAuth2 -> U8.ByteString -> IO String
+fetchOAuth2AccessToken oauth2 authCode = do
+  manager <- newManager tlsManagerSettings
+  let textAuthCode = convertString authCode
+  resp <- fetchAccessToken manager oauth2 ExchangeToken { extoken = textAuthCode }
+  print resp
+  return ""
+
+extractAuthCode :: [QueryItem] -> U8.ByteString
+extractAuthCode queryItems = do
+  let mbAuthCode = (snd . P.head) $ P.filter (\i -> fst i == U8.fromString "code") queryItems
+  fromMaybe (error "Could not find authorization code") mbAuthCode
+
 authenticate :: Remote -> IO ()
 authenticate (GitHub _) = undefined
 authenticate (Bitbucket _) = do
@@ -135,10 +156,12 @@ authenticate (Bitbucket _) = do
         Just clientSecret -> do
           let oauth2Key = bitbucketKey clientId clientSecret
           let authUrl = BL8.unpack $ toLazyByteString $ serializeURIRef $ authorizationUrl oauth2Key
-          Prelude.putStrLn "Please access the below URL:"
-          Prelude.putStrLn authUrl
+          P.putStrLn "Please access the below URL:"
+          P.putStrLn authUrl
           queryItems <- receiveWebRequest 8080
-          print queryItems
+          let authCode = extractAuthCode queryItems
+          accessToken <- fetchOAuth2AccessToken oauth2Key authCode
+          print accessToken
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"
@@ -205,7 +228,7 @@ runItemQuery token suffix = do
     Nothing -> error "Could not identify remote URL."
 
 toParamList :: [(String, String)] -> ParamList
-toParamList = Prelude.map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
+toParamList = P.map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
 
 runListQuery :: FromJSON a => Token -> String -> (a -> b) -> Bool -> IO [b]
 runListQuery token suffix converter showAll = do
