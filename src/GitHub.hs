@@ -26,7 +26,8 @@ import           Network.HTTP.Conduit            (newManager,
                                                   tlsManagerSettings)
 import           Network.HTTP.Types.URI          (QueryItem, renderQuery)
 import           Network.OAuth.OAuth2            (ExchangeToken (..),
-                                                  OAuth2 (..), authorizationUrl)
+                                                  OAuth2 (..), accessToken,
+                                                  atoken, authorizationUrl)
 import           Network.OAuth.OAuth2.HttpClient (fetchAccessToken)
 import           Network.Wreq                    (Options, Response, defaults,
                                                   getWith, header, linkURL,
@@ -135,24 +136,25 @@ fetchOAuth2AccessToken oauth2 authCode = do
   manager <- newManager tlsManagerSettings
   let textAuthCode = convertString authCode
   resp <- fetchAccessToken manager oauth2 ExchangeToken { extoken = textAuthCode }
-  print resp
-  return ""
+  case resp of
+    Left err    -> P.error $ show err
+    Right token -> return $ (convertString . atoken . accessToken) token
 
 extractAuthCode :: [QueryItem] -> U8.ByteString
 extractAuthCode queryItems = do
   let mbAuthCode = (snd . P.head) $ P.filter (\i -> fst i == U8.fromString "code") queryItems
-  fromMaybe (error "Could not find authorization code") mbAuthCode
+  fromMaybe (P.error "Could not find authorization code") mbAuthCode
 
-authenticate :: Remote -> IO ()
+authenticate :: Remote -> IO String
 authenticate (GitHub _) = undefined
 authenticate (Bitbucket _) = do
   mClientId <- lookupEnv "BITBUCKET_CLIENT_ID"
   case mClientId of
-    Nothing -> error "Missing Bitbucket Client ID"
+    Nothing -> P.error "Missing Bitbucket Client ID"
     Just clientId -> do
       mClientSecret <- lookupEnv "BITBUCKET_CLIENT_SECRET"
       case mClientSecret of
-        Nothing -> error "Missing Bitbucket Client ID"
+        Nothing -> P.error "Missing Bitbucket Client ID"
         Just clientSecret -> do
           let oauth2Key = bitbucketKey clientId clientSecret
           let authUrl = BL8.unpack $ toLazyByteString $ serializeURIRef $ authorizationUrl oauth2Key
@@ -160,8 +162,7 @@ authenticate (Bitbucket _) = do
           P.putStrLn authUrl
           queryItems <- receiveWebRequest 8080
           let authCode = extractAuthCode queryItems
-          accessToken <- fetchOAuth2AccessToken oauth2Key authCode
-          print accessToken
+          fetchOAuth2AccessToken oauth2Key authCode
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"
@@ -224,8 +225,8 @@ runItemQuery token suffix = do
       maybeItem <- readItem <$> getGitHub token url
       case maybeItem of
         Just item -> return item
-        Nothing   -> error "Failed to parse response."
-    Nothing -> error "Could not identify remote URL."
+        Nothing   -> P.error "Failed to parse response."
+    Nothing -> P.error "Could not identify remote URL."
 
 toParamList :: [(String, String)] -> ParamList
 toParamList = P.map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
@@ -235,7 +236,7 @@ runListQuery token suffix converter showAll = do
   maybeUrl <- buildUrl suffix params
   case maybeUrl of
     Just url -> fmap converter <$> getItemsFromUrl token url
-    Nothing  -> error "Could not identify remote URL."
+    Nothing  -> P.error "Could not identify remote URL."
   where params = if showAll
                     then (Just . toParamList) [("filter", "all"), ("state", "all")]
                     else Nothing
@@ -255,5 +256,5 @@ runCreate token suffix param = do
       maybeItem <- readItem <$> postGitHub token url (toJSON param)
       case maybeItem of
         Just item -> return item
-        Nothing   -> error "Failed to parse response."
-    Nothing -> error "Could not identify remote URL."
+        Nothing   -> P.error "Failed to parse response."
+    Nothing -> P.error "Could not identify remote URL."

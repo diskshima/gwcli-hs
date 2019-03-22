@@ -5,7 +5,8 @@
 module Main where
 
 import           Data.List             (isInfixOf)
-import           Data.Yaml             (FromJSON, decodeFileEither)
+import           Data.Yaml             (FromJSON, ToJSON, decodeFileEither,
+                                        encodeFile)
 import           GHC.Generics
 import           GitHub                (authenticate, createIssue,
                                         createPullRequest, getIssue,
@@ -32,6 +33,7 @@ data Credentials = Credentials
   } deriving (Show, Generic)
 
 instance FromJSON Credentials
+instance ToJSON Credentials
 
 options :: [OptDescr Flag]
 options =
@@ -72,6 +74,9 @@ readCredential filepath = do
       print err
       return Nothing
     Right content -> return content
+
+writeCredential :: FilePath -> Credentials -> IO ()
+writeCredential = encodeFile
 
 paramToIssue :: [String] -> I.Issue
 paramToIssue params = I.Issue Nothing title body Nothing
@@ -120,6 +125,13 @@ handlePullRequest remote params =
     where subsubcommand = head params
           rest = tail params
 
+handleAuth :: Remote -> Credentials -> FilePath -> IO ()
+handleAuth remote creds credFilePath = do
+  accessToken <- authenticate remote
+  putStrLn "Fetched access token."
+  let newCreds = Credentials { github = github creds, bitbucket = accessToken }
+  writeCredential credFilePath newCreds
+
 remoteUrlToRemote :: String -> Credentials -> Remote
 remoteUrlToRemote url cred
   | "bitbucket.org" `isInfixOf` url = Bitbucket (bitbucket cred)
@@ -146,7 +158,8 @@ main :: IO ()
 main = do
   args <- getArgs
   homeDir <- getHomeDirectory
-  cred <- readCredential $ joinPath [homeDir, ".gwcli.yaml"]
+  let credFilePath = joinPath [homeDir, ".gwcli.yaml"]
+  cred <- readCredential credFilePath
   case cred of
     Nothing -> printError "Failed to read credentials file."
     Just c -> do
@@ -154,7 +167,7 @@ main = do
       case getOpt RequireOrder options args of
         (_, n, [])   ->
           case head n of
-            "auth"        -> authenticate remote
+            "auth"        -> handleAuth remote c credFilePath
             "issue"       -> handleIssue remote (tail n)
             "pullrequest" -> handlePullRequest remote (tail n)
             "browse"      -> open remote
