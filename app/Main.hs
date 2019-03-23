@@ -8,14 +8,13 @@ import           Data.List             (isInfixOf)
 import           Data.Yaml             (FromJSON, ToJSON, decodeFileEither,
                                         encodeFile)
 import           GHC.Generics
-import           GitHub                (authenticate, createIssue,
-                                        createPullRequest, getIssue,
-                                        getPullRequest, listIssues,
-                                        listPullRequests, open)
 import           GitUtils              (getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
                                         nthOrNothing)
-import           Remote                (Remote (..), Token)
+import           Remote                (Remote (..), Token, authenticate,
+                                        createIssue, createPullRequest,
+                                        getIssue, getPullRequest, listIssues,
+                                        listPullRequests, open)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
