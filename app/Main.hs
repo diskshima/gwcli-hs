@@ -11,9 +11,9 @@ import           GHC.Generics
 import           GitUtils              (getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
                                         nthOrNothing)
-import           Remote                (Remote (..), Token, authenticate,
-                                        createIssue, createPullRequest,
-                                        getIssue, getPullRequest, listIssues,
+import           Remote                (Remote (..), authenticate, createIssue,
+                                        createPullRequest, getIssue,
+                                        getPullRequest, listIssues,
                                         listPullRequests, open)
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
@@ -23,6 +23,7 @@ import           System.FilePath       (joinPath)
 import           Text.RawString.QQ
 import qualified Types.Issue           as I
 import qualified Types.PullRequest     as PR
+import           WebUtils              (Token)
 
 data Flag = Help | Verbose | Version
 

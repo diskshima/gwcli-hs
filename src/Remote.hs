@@ -5,6 +5,7 @@
 
 module Remote where
 
+import           BitbucketApi                    as BB
 import           Control.Lens.Operators          ((.~), (^.))
 import           Data.Aeson                      (FromJSON (parseJSON),
                                                   ToJSON (toJSON), decode,
@@ -42,9 +43,9 @@ import qualified Types.Issue                     as I
 import qualified Types.PullRequest               as PR
 import           URI.ByteString                  (serializeURIRef)
 import           URI.ByteString.QQ
-import           WebUtils                        (receiveWebRequest)
-
-type Token = String
+import           WebUtils                        (ParamList, Token,
+                                                  receiveWebRequest,
+                                                  toParamList)
 
 data Remote = GitHub Token
             | Bitbucket Token
@@ -91,8 +92,8 @@ getIssue (GitHub token) issueId = responseToIssue <$> runItemQuery token path
 getIssue (Bitbucket _) _ = undefined
 
 listIssues :: Remote -> Bool -> IO [I.Issue]
-listIssues (GitHub token) = runListQuery token "/issues" responseToIssue
-listIssues (Bitbucket _)  = undefined
+listIssues (GitHub token)    = runListQuery token "/issues" responseToIssue
+listIssues (Bitbucket token) = BB.listIssues token
 
 createIssue :: Remote -> I.Issue -> IO I.Issue
 createIssue (GitHub token) details =
@@ -209,8 +210,6 @@ getItemsFromUrl token url = do
   nextItems <- getItemsFromUrl token (U8.toString (readNextLink resp))
   return $ readItems resp ++ nextItems
 
-type ParamList = [(U8.ByteString, Maybe U8.ByteString)]
-
 buildUrl :: String -> Maybe ParamList -> IO (Maybe String)
 buildUrl suffix maybeParams = do
   maybeRi <- repoInfoFromRepo
@@ -231,9 +230,6 @@ runItemQuery token suffix = do
         Just item -> return item
         Nothing   -> P.error "Failed to parse response."
     Nothing -> P.error "Could not identify remote URL."
-
-toParamList :: [(String, String)] -> ParamList
-toParamList = P.map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
 
 runListQuery :: FromJSON a => Token -> String -> (a -> b) -> Bool -> IO [b]
 runListQuery token suffix converter showAll = do

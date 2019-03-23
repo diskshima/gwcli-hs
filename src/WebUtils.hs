@@ -5,14 +5,25 @@
 
 module WebUtils
   (
-    receiveWebRequest
+    ParamList
+  , Token
+  , receiveWebRequest
+  , toParamList
   ) where
 
 import           Data.ByteString.UTF8   (fromString)
+import qualified Data.ByteString.UTF8   as U8
 import           Network.HTTP
 import           Network.HTTP.Types.URI (QueryItem, parseQuery)
 import           Network.Socket
 import           Network.URI
+import           Prelude                as P
+
+type Token = String
+type ParamList = [(U8.ByteString, Maybe U8.ByteString)]
+
+toParamList :: [(String, String)] -> ParamList
+toParamList = P.map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
 
 receiveWebRequest :: Int -> IO [QueryItem]
 receiveWebRequest portNum = do
