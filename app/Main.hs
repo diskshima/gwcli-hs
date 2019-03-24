@@ -11,10 +11,11 @@ import           GHC.Generics
 import           GitUtils              (getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
                                         nthOrNothing)
-import           Remote                (Remote (..), authenticate, createIssue,
+import           Remote                (authenticate, createIssue,
                                         createPullRequest, getIssue,
                                         getPullRequest, listIssues,
                                         listPullRequests, open)
+import           RemoteTypes           (Remote (..))
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)

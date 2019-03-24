@@ -7,17 +7,25 @@ module WebUtils
   (
     ParamList
   , Token
+  , fetchOAuth2AccessToken
   , receiveWebRequest
   , toParamList
   ) where
 
-import           Data.ByteString.UTF8   (fromString)
-import qualified Data.ByteString.UTF8   as U8
+import           Data.ByteString.UTF8            (fromString)
+import qualified Data.ByteString.UTF8            as U8
 import           Network.HTTP
-import           Network.HTTP.Types.URI (QueryItem, parseQuery)
+import           Network.HTTP.Types.URI          (QueryItem, parseQuery)
+import           Network.OAuth.OAuth2            (ExchangeToken (..),
+                                                  OAuth2 (..), accessToken,
+                                                  atoken)
+import           Network.OAuth.OAuth2.HttpClient (fetchAccessToken)
 import           Network.Socket
 import           Network.URI
-import           Prelude                as P
+import           Data.String.Conversions         (convertString)
+import           Network.HTTP.Conduit            (newManager,
+                                                  tlsManagerSettings)
+import           Prelude                         as P
 
 type Token = String
 type ParamList = [(U8.ByteString, Maybe U8.ByteString)]
@@ -42,6 +50,15 @@ receiveWebRequest portNum = do
       respondHTTP hs $ Response (2,0,0) "OK" [] "OK"
       Network.HTTP.close hs
       return queryItems
+
+fetchOAuth2AccessToken :: OAuth2 -> U8.ByteString -> IO String
+fetchOAuth2AccessToken oauth2 authCode = do
+  manager <- newManager tlsManagerSettings
+  let textAuthCode = convertString authCode
+  resp <- fetchAccessToken manager oauth2 ExchangeToken { extoken = textAuthCode }
+  case resp of
+    Left err    -> P.error $ show err
+    Right token -> return $ (convertString . atoken . accessToken) token
 
 -- main :: IO ()
 -- main = do

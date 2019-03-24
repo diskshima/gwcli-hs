@@ -1,29 +1,40 @@
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
 
 module BitbucketApi
   (
-    listIssues
+    authenticate
+  , listIssues
   ) where
 
-import           Control.Lens.Operators ((.~), (^.))
-import           Data.Aeson             (FromJSON (parseJSON), decode,
-                                         genericParseJSON)
-import           Data.Aeson.Casing      (aesonPrefix, snakeCase)
-import qualified Data.ByteString.Lazy   as BL
-import qualified Data.ByteString.UTF8   as U8
-import           Data.Function          ((&))
-import           Data.Maybe             (fromMaybe)
+import           Control.Lens.Operators       ((.~), (^.))
+import           Data.Aeson                   (FromJSON (parseJSON), decode,
+                                               genericParseJSON)
+import           Data.Aeson.Casing            (aesonPrefix, snakeCase)
+import qualified Data.ByteString.Lazy         as BL
+import           Data.ByteString.Lazy.Builder (toLazyByteString)
+import           Data.ByteString.Lazy.Char8   as BL8
+import qualified Data.ByteString.UTF8         as U8
+import           Data.Function                ((&))
+import           Data.Maybe                   (fromMaybe)
+import           Data.Text.Lazy               as TL
 import           GHC.Generics
-import           GitUtils               (RepoInfo (..), repoInfoFromRepo)
-import           Network.HTTP.Types.URI (renderQuery)
-import           Network.Wreq           (Options, Response, defaults, getWith,
-                                         header, responseBody)
-import           Prelude                as P
-import           Text.Printf            (printf)
-import qualified Types.Issue            as I
-import           WebUtils               (ParamList, Token)
+import           GitUtils                     (RepoInfo (..), repoInfoFromRepo)
+import           Network.HTTP.Types.URI       (QueryItem, renderQuery)
+import           Network.OAuth.OAuth2         (OAuth2 (..), authorizationUrl)
+import           Network.Wreq                 (Options, Response, defaults,
+                                               getWith, header, responseBody)
+import           Prelude                      as P
+import           System.Environment           (lookupEnv)
+import           Text.Printf                  (printf)
+import qualified Types.Issue                  as I
+import           URI.ByteString               (serializeURIRef)
+import           URI.ByteString.QQ
+import           WebUtils                     (ParamList, Token,
+                                               fetchOAuth2AccessToken,
+                                               receiveWebRequest)
 
 newtype Html = Html
   { htmlHref :: String
@@ -70,6 +81,38 @@ baseUrl = "https://api.bitbucket.org/2.0"
 
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repositories/%s/%s" (organization ri) (repository ri)
+
+bitbucketKey :: String -> String -> OAuth2
+bitbucketKey clientId clientSecret =
+  OAuth2 { oauthClientId = (TL.toStrict . TL.pack) clientId
+          , oauthClientSecret = (TL.toStrict . TL.pack) clientSecret
+          , oauthCallback = Just [uri|http://127.0.0.1:8080/bitbucketCallback|]
+          , oauthOAuthorizeEndpoint = [uri|https://bitbucket.org/site/oauth2/authorize|]
+          , oauthAccessTokenEndpoint = [uri|https://bitbucket.org/site/oauth2/access_token|]
+}
+
+extractAuthCode :: [QueryItem] -> U8.ByteString
+extractAuthCode queryItems = do
+  let mbAuthCode = (snd . P.head) $ P.filter (\i -> fst i == U8.fromString "code") queryItems
+  fromMaybe (P.error "Could not find authorization code") mbAuthCode
+
+authenticate :: IO String
+authenticate = do
+  mClientId <- lookupEnv "BITBUCKET_CLIENT_ID"
+  case mClientId of
+    Nothing -> P.error "Missing Bitbucket Client ID"
+    Just clientId -> do
+      mClientSecret <- lookupEnv "BITBUCKET_CLIENT_SECRET"
+      case mClientSecret of
+        Nothing -> P.error "Missing Bitbucket Client ID"
+        Just clientSecret -> do
+          let oauth2Key = bitbucketKey clientId clientSecret
+          let authUrl = BL8.unpack $ toLazyByteString $ serializeURIRef $ authorizationUrl oauth2Key
+          P.putStrLn "Please access the below URL:"
+          P.putStrLn authUrl
+          queryItems <- receiveWebRequest 8080
+          let authCode = extractAuthCode queryItems
+          fetchOAuth2AccessToken oauth2Key authCode
 
 buildUrl :: String -> Maybe ParamList -> IO (Maybe String)
 buildUrl suffix maybeParams = do
