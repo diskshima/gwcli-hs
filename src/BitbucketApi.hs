@@ -6,6 +6,7 @@
 module BitbucketApi
   (
     authenticate
+  , getIssue
   , listIssues
   ) where
 
@@ -129,6 +130,16 @@ bearerAuthHeader token = defaults & header "Authorization" .~ [U8.fromString $ "
 
 getBitbucket :: Token -> String -> IO (Response BL.ByteString)
 getBitbucket token = getWith $ bearerAuthHeader token
+
+getIssue :: Token -> String -> IO I.Issue
+getIssue token itemId = do
+  maybeUrl <- buildUrl ("/issues/" ++ itemId) Nothing
+  case maybeUrl of
+    Just url -> do
+      resp <- getBitbucket token url
+      let decoded = decodeResponse resp :: Issue
+      return $ responseToIssue decoded
+    Nothing  -> P.error "Could not build URL."
 
 listIssues :: String -> Bool -> IO [I.Issue]
 listIssues token _ = do

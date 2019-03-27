@@ -20,7 +20,7 @@ authenticate (Bitbucket _) = BB.authenticate
 
 getIssue :: Remote -> String -> IO I.Issue
 getIssue (GitHub token)  = GH.getIssue token
-getIssue (Bitbucket _)   = undefined
+getIssue (Bitbucket token)   = BB.getIssue token
 
 listIssues :: Remote -> Bool -> IO [I.Issue]
 listIssues (GitHub token)    = GH.runListQuery token "/issues" GH.responseToIssue
