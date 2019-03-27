@@ -6,13 +6,15 @@
 module BitbucketApi
   (
     authenticate
+  , createIssue
   , getIssue
   , listIssues
   ) where
 
-import           Control.Lens.Operators       ((.~), (^.))
-import           Data.Aeson                   (FromJSON (parseJSON), decode,
-                                               genericParseJSON)
+import           Control.Lens.Operators       ((.~))
+import           Data.Aeson                   (FromJSON (parseJSON),
+                                               ToJSON (..), genericParseJSON,
+                                               genericToJSON)
 import           Data.Aeson.Casing            (aesonPrefix, snakeCase)
 import qualified Data.ByteString.Lazy         as BL
 import           Data.ByteString.Lazy.Builder (toLazyByteString)
@@ -23,10 +25,12 @@ import           Data.Maybe                   (fromMaybe)
 import           Data.Text.Lazy               as TL
 import           GHC.Generics
 import           GitUtils                     (RepoInfo (..), repoInfoFromRepo)
+import           JsonUtils                    (decodeResponseOrError)
 import           Network.HTTP.Types.URI       (QueryItem, renderQuery)
 import           Network.OAuth.OAuth2         (OAuth2 (..), authorizationUrl)
 import           Network.Wreq                 (Options, Response, defaults,
-                                               getWith, header, responseBody)
+                                               getWith, header, postWith)
+import           Network.Wreq.Types           (Postable)
 import           Prelude                      as P
 import           System.Environment           (lookupEnv)
 import           Text.Printf                  (printf)
@@ -45,8 +49,9 @@ instance FromJSON Html where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
 data Links = Links
-  { linksHtml     :: Html
-  , linksComments :: Html
+  { linksSelf     :: Html
+  , linksHtml     :: Maybe Html
+  , linksComments :: Maybe Html
   } deriving (Show, Generic)
 
 instance FromJSON Links where
@@ -58,8 +63,24 @@ data Issue = Issue
   , issueLinks :: Links
   } deriving (Show, Generic)
 
-instance FromJSON Issues where
+instance FromJSON Issue where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
+data IssueContent = IssueContent
+  { issuecontentRaw    :: String
+  , issuecontentMarkup :: String
+  } deriving (Show, Generic)
+
+instance ToJSON IssueContent where
+  toJSON = genericToJSON $ aesonPrefix snakeCase
+
+data IssuePost = IssuePost
+  { issuepostTitle   :: String
+  , issuepostContent :: IssueContent
+  } deriving (Show, Generic)
+
+instance ToJSON IssuePost where
+  toJSON = genericToJSON $ aesonPrefix snakeCase
 
 data Issues = Issues
   { issuesSize   :: Integer
@@ -67,11 +88,11 @@ data Issues = Issues
   , issuesNext   :: Maybe String
   } deriving (Show, Generic)
 
-instance FromJSON Issue where
+instance FromJSON Issues where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
 urlFromIssue :: Issue -> String
-urlFromIssue = htmlHref . linksHtml . issueLinks
+urlFromIssue = maybe "" htmlHref . linksHtml . issueLinks
 
 responseToIssue :: Issue -> I.Issue
 responseToIssue i =
@@ -137,9 +158,17 @@ getIssue token itemId = do
   case maybeUrl of
     Just url -> do
       resp <- getBitbucket token url
-      let decoded = decodeResponse resp :: Issue
+      let decoded = decodeResponseOrError resp :: Issue
       return $ responseToIssue decoded
     Nothing  -> P.error "Could not build URL."
+
+createIssue :: Token -> I.Issue -> IO I.Issue
+createIssue token issue = responseToIssue <$> runCreate token "/issues" param
+  where param = issueToIssuePost issue
+
+issueToIssuePost :: I.Issue -> IssuePost
+issueToIssuePost issue = IssuePost (I.title issue) (IssueContent body "plaintext")
+  where body = fromMaybe "" $ I.body issue
 
 listIssues :: String -> Bool -> IO [I.Issue]
 listIssues token _ = do
@@ -154,11 +183,17 @@ getIssuesFromUrl :: Token -> String -> IO [Issue]
 getIssuesFromUrl _ "" = return []
 getIssuesFromUrl token url = do
   resp <- getBitbucket token url
-  let decoded = decodeResponse resp :: Issues
+  let decoded = decodeResponseOrError resp :: Issues
       issues = issuesValues decoded
   nextIssues <- getIssuesFromUrl token (fromMaybe "" (issuesNext decoded))
   return $ issues ++ nextIssues
 
-decodeResponse :: FromJSON a => Response BL.ByteString -> a
-decodeResponse resp = fromMaybe (error "Failed to parse response") decoded
-  where decoded = decode (resp ^. responseBody)
+runCreate :: (ToJSON a, FromJSON b) => Token -> String -> a -> IO b
+runCreate token suffix param = do
+  maybeUrl <- buildUrl suffix Nothing
+  case maybeUrl of
+    Just url -> decodeResponseOrError <$> postBitbucket token url (toJSON param)
+    Nothing -> P.error "Could not identify remote URL."
+
+postBitbucket :: Postable a => Token -> String -> a -> IO (Response BL.ByteString)
+postBitbucket token = postWith $ bearerAuthHeader token

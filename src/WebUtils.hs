@@ -12,9 +12,13 @@ module WebUtils
   , toParamList
   ) where
 
-import           Data.ByteString.UTF8            (fromString)
 import qualified Data.ByteString.UTF8            as U8
-import           Network.HTTP
+import           Data.String.Conversions         (convertString)
+import           Network.HTTP                    (Request (..), Response (..), close,
+                                                  receiveHTTP, respondHTTP,
+                                                  socketConnection)
+import           Network.HTTP.Conduit            (newManager,
+                                                  tlsManagerSettings)
 import           Network.HTTP.Types.URI          (QueryItem, parseQuery)
 import           Network.OAuth.OAuth2            (ExchangeToken (..),
                                                   OAuth2 (..), accessToken,
@@ -22,9 +26,6 @@ import           Network.OAuth.OAuth2            (ExchangeToken (..),
 import           Network.OAuth.OAuth2.HttpClient (fetchAccessToken)
 import           Network.Socket
 import           Network.URI
-import           Data.String.Conversions         (convertString)
-import           Network.HTTP.Conduit            (newManager,
-                                                  tlsManagerSettings)
 import           Prelude                         as P
 
 type Token = String
@@ -46,7 +47,7 @@ receiveWebRequest portNum = do
   case req of
     Left _ -> error "Receiving request failed"
     Right Request {..} -> do
-      let queryItems = parseQuery $ fromString $ uriQuery rqURI
+      let queryItems = parseQuery $ U8.fromString $ uriQuery rqURI
       respondHTTP hs $ Response (2,0,0) "OK" [] "OK"
       Network.HTTP.close hs
       return queryItems

@@ -3,34 +3,31 @@
 
 module Remote where
 
-import           BitbucketApi                    as BB
-import           GitHubApi                       as GH
-import           GitUtils                        (RepoInfo (..),
-                                                  repoInfoFromRepo)
-import           Opener                          (openUrl)
-import           Prelude                         as P
-import           RemoteTypes                     (Remote (..))
-import           Text.Printf                     (printf)
-import qualified Types.Issue                     as I
-import qualified Types.PullRequest               as PR
+import           BitbucketApi      as BB
+import           GitHubApi         as GH
+import           GitUtils          (RepoInfo (..), repoInfoFromRepo)
+import           Opener            (openUrl)
+import           Prelude           as P
+import           RemoteTypes       (Remote (..))
+import           Text.Printf       (printf)
+import qualified Types.Issue       as I
+import qualified Types.PullRequest as PR
 
 authenticate :: Remote -> IO String
-authenticate (GitHub _) = undefined
+authenticate (GitHub _)    = undefined
 authenticate (Bitbucket _) = BB.authenticate
 
 getIssue :: Remote -> String -> IO I.Issue
-getIssue (GitHub token)  = GH.getIssue token
-getIssue (Bitbucket token)   = BB.getIssue token
+getIssue (GitHub token)    = GH.getIssue token
+getIssue (Bitbucket token) = BB.getIssue token
 
 listIssues :: Remote -> Bool -> IO [I.Issue]
 listIssues (GitHub token)    = GH.runListQuery token "/issues" GH.responseToIssue
 listIssues (Bitbucket token) = BB.listIssues token
 
 createIssue :: Remote -> I.Issue -> IO I.Issue
-createIssue (GitHub token) details =
-  GH.responseToIssue <$> GH.runCreate token "/issues" param
-    where param = GH.issueToIssuePost details
-createIssue (Bitbucket _) _ = undefined
+createIssue (GitHub token)    = GH.createIssue token
+createIssue (Bitbucket token) = BB.createIssue token
 
 getPullRequest :: Remote -> String -> IO PR.PullRequest
 getPullRequest (GitHub token) prId = GH.responseToPullRequest <$> GH.runItemQuery token path

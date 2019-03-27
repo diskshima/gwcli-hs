@@ -4,7 +4,8 @@
 
 module GitHubApi
   (
-    getIssue
+    createIssue
+  , getIssue
   , issueToIssuePost
   , prToPullRequestPost
   , responseToIssue
@@ -16,19 +17,18 @@ module GitHubApi
 
 import           Control.Lens.Operators ((.~), (^.))
 import           Data.Aeson             (FromJSON (parseJSON), ToJSON (toJSON),
-                                         decode, genericParseJSON,
-                                         genericToJSON)
+                                         genericParseJSON, genericToJSON)
 import           Data.Aeson.Casing      (aesonPrefix, snakeCase)
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as U8
 import           Data.Function          ((&))
-import           Data.Maybe             (fromMaybe)
 import           GHC.Generics
 import           GitUtils               (RepoInfo (..), repoInfoFromRepo)
+import           JsonUtils              (decodeResponse, decodeResponseAsList)
 import           Network.HTTP.Types.URI (renderQuery)
 import           Network.Wreq           (Options, Response, defaults, getWith,
                                          header, linkURL, postWith,
-                                         responseBody, responseLink)
+                                         responseLink)
 import           Network.Wreq.Types     (Postable)
 import           Prelude                as P
 import           Text.Printf            (printf)
@@ -79,6 +79,10 @@ getIssue :: Token -> String -> IO I.Issue
 getIssue token issueId = responseToIssue <$> runItemQuery token path
     where path = "/issues/" ++ issueId
 
+createIssue :: Token -> I.Issue -> IO I.Issue
+createIssue token details = responseToIssue <$> runCreate token "/issues" param
+  where param = issueToIssuePost details
+
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repos/%s/%s" (organization ri) (repository ri)
 
@@ -100,13 +104,6 @@ responseToPullRequest pr =
   PR.PullRequest (Just . show $ pullrequestgetNumber pr) (pullrequestgetTitle pr)
                  "" "" Nothing (Just $ pullrequestgetHtmlUrl pr)
 
-readItem :: FromJSON a => Response BL.ByteString -> Maybe a
-readItem resp = decode (resp ^. responseBody)
-
-readItems :: FromJSON a => Response BL.ByteString -> [a]
-readItems resp = fromMaybe [] items
-  where items = decode (resp ^. responseBody)
-
 readNextLink :: Response BL.ByteString -> U8.ByteString
 readNextLink resp = resp ^. responseLink "rel" "next" . linkURL
 
@@ -115,7 +112,7 @@ getItemsFromUrl _ "" = return []
 getItemsFromUrl token url = do
   resp <- getGitHub token url
   nextItems <- getItemsFromUrl token (U8.toString (readNextLink resp))
-  return $ readItems resp ++ nextItems
+  return $ decodeResponseAsList resp ++ nextItems
 
 buildUrl :: String -> Maybe ParamList -> IO (Maybe String)
 buildUrl suffix maybeParams = do
@@ -132,7 +129,7 @@ runItemQuery token suffix = do
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
     Just url -> do
-      maybeItem <- readItem <$> getGitHub token url
+      maybeItem <- decodeResponse <$> getGitHub token url
       case maybeItem of
         Just item -> return item
         Nothing   -> P.error "Failed to parse response."
@@ -160,7 +157,7 @@ runCreate token suffix param = do
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
     Just url -> do
-      maybeItem <- readItem <$> postGitHub token url (toJSON param)
+      maybeItem <- decodeResponse <$> postGitHub token url (toJSON param)
       case maybeItem of
         Just item -> return item
         Nothing   -> P.error "Failed to parse response."
