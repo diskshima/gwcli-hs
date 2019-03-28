@@ -22,7 +22,7 @@ getIssue (GitHub token)    = GH.getIssue token
 getIssue (Bitbucket token) = BB.getIssue token
 
 listIssues :: Remote -> Bool -> IO [I.Issue]
-listIssues (GitHub token)    = GH.runListQuery token "/issues" GH.responseToIssue
+listIssues (GitHub token)    = GH.listIssues token
 listIssues (Bitbucket token) = BB.listIssues token
 
 createIssue :: Remote -> I.Issue -> IO I.Issue
@@ -30,13 +30,12 @@ createIssue (GitHub token)    = GH.createIssue token
 createIssue (Bitbucket token) = BB.createIssue token
 
 getPullRequest :: Remote -> String -> IO PR.PullRequest
-getPullRequest (GitHub token) prId = GH.responseToPullRequest <$> GH.runItemQuery token path
-    where path = "/pulls/" ++ prId
-getPullRequest (Bitbucket _) _ = undefined
+getPullRequest (GitHub token)    = GH.getPullRequest token
+getPullRequest (Bitbucket token) = BB.getPullRequest token
 
 listPullRequests :: Remote -> Bool -> IO [PR.PullRequest]
-listPullRequests (GitHub token) = GH.runListQuery token "/pulls" GH.responseToPullRequest
-listPullRequests (Bitbucket _) = undefined
+listPullRequests (GitHub token) showAll = GH.listPullRequests token showAll
+listPullRequests (Bitbucket token) _    = BB.listPullRequests token
 
 createPullRequest :: Remote -> PR.PullRequest -> IO PR.PullRequest
 createPullRequest (GitHub token) details =

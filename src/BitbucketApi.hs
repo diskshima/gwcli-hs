@@ -8,7 +8,9 @@ module BitbucketApi
     authenticate
   , createIssue
   , getIssue
+  , getPullRequest
   , listIssues
+  , listPullRequests
   ) where
 
 import           Control.Lens.Operators       ((.~))
@@ -25,7 +27,8 @@ import           Data.Maybe                   (fromMaybe)
 import           Data.Text.Lazy               as TL
 import           GHC.Generics
 import           GitUtils                     (RepoInfo (..), repoInfoFromRepo)
-import           JsonUtils                    (decodeResponseOrError)
+import           JsonUtils                    (decodeResponse,
+                                               decodeResponseOrError)
 import           Network.HTTP.Types.URI       (QueryItem, renderQuery)
 import           Network.OAuth.OAuth2         (OAuth2 (..), authorizationUrl)
 import           Network.Wreq                 (Options, Response, defaults,
@@ -35,6 +38,7 @@ import           Prelude                      as P
 import           System.Environment           (lookupEnv)
 import           Text.Printf                  (printf)
 import qualified Types.Issue                  as I
+import qualified Types.PullRequest            as PR
 import           URI.ByteString               (serializeURIRef)
 import           URI.ByteString.QQ
 import           WebUtils                     (ParamList, Token,
@@ -91,12 +95,39 @@ data Issues = Issues
 instance FromJSON Issues where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
+data PullRequest = PullRequest
+  { pullrequestId    :: Integer
+  , pullrequestTitle :: String
+  , pullrequestLinks :: Links
+  } deriving (Show, Generic)
+
+instance FromJSON PullRequest where
+  parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
+data PullRequests = PullRequests
+  { pullrequestsSize   :: Integer
+  , pullrequestsValues :: [PullRequest]
+  , pullrequestsNext   :: Maybe String
+  } deriving (Show, Generic)
+
+instance FromJSON PullRequests where
+  parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
 urlFromIssue :: Issue -> String
 urlFromIssue = maybe "" htmlHref . linksHtml . issueLinks
+
+urlFromPullRequest :: PullRequest -> String
+urlFromPullRequest  = maybe "" htmlHref . linksHtml . pullrequestLinks
 
 responseToIssue :: Issue -> I.Issue
 responseToIssue i =
    I.Issue (Just . show $ issueId i) (issueTitle i) Nothing (Just $ urlFromIssue i)
+
+responseToPullRequest :: PullRequest -> PR.PullRequest
+responseToPullRequest pr =
+  PR.PullRequest (Just . show $ pullrequestId pr) (pullrequestTitle pr)
+                 "" "" Nothing (Just htmlLink)
+                   where htmlLink = urlFromPullRequest pr
 
 baseUrl :: String
 baseUrl = "https://api.bitbucket.org/2.0"
@@ -153,14 +184,8 @@ getBitbucket :: Token -> String -> IO (Response BL.ByteString)
 getBitbucket token = getWith $ bearerAuthHeader token
 
 getIssue :: Token -> String -> IO I.Issue
-getIssue token itemId = do
-  maybeUrl <- buildUrl ("/issues/" ++ itemId) Nothing
-  case maybeUrl of
-    Just url -> do
-      resp <- getBitbucket token url
-      let decoded = decodeResponseOrError resp :: Issue
-      return $ responseToIssue decoded
-    Nothing  -> P.error "Could not build URL."
+getIssue token itemId = responseToIssue <$> runItemQuery token path
+  where path = "/issues/" ++ itemId
 
 createIssue :: Token -> I.Issue -> IO I.Issue
 createIssue token issue = responseToIssue <$> runCreate token "/issues" param
@@ -187,6 +212,39 @@ getIssuesFromUrl token url = do
       issues = issuesValues decoded
   nextIssues <- getIssuesFromUrl token (fromMaybe "" (issuesNext decoded))
   return $ issues ++ nextIssues
+
+getPullRequest :: Token -> String -> IO PR.PullRequest
+getPullRequest token itemId = responseToPullRequest <$> runItemQuery token path
+  where path = "/pullrequests/" ++ itemId
+
+listPullRequests :: Token -> IO [PR.PullRequest]
+listPullRequests token = do
+  maybeUrl <- buildUrl "/pullrequests" Nothing
+  case maybeUrl of
+    Just url -> do
+      items <- getPullRequestsFromUrl token url
+      return $ responseToPullRequest <$> items
+    Nothing  -> P.error "Could not identify remote URL."
+
+getPullRequestsFromUrl :: Token -> String -> IO [PullRequest]
+getPullRequestsFromUrl _ "" = return []
+getPullRequestsFromUrl token url = do
+  resp <- getBitbucket token url
+  let decoded = decodeResponseOrError resp :: PullRequests
+      items = pullrequestsValues decoded
+  nextPullRequests <- getPullRequestsFromUrl token (fromMaybe "" (pullrequestsNext decoded))
+  return $ items ++ nextPullRequests
+
+runItemQuery :: FromJSON a => Token -> String -> IO a
+runItemQuery token suffix = do
+  maybeUrl <- buildUrl suffix Nothing
+  case maybeUrl of
+    Just url -> do
+      maybeItem <- decodeResponse <$> getBitbucket token url
+      case maybeItem of
+        Just item -> return item
+        Nothing   -> P.error "Failed to parse response."
+    Nothing -> P.error "Could not identify remote URL."
 
 runCreate :: (ToJSON a, FromJSON b) => Token -> String -> a -> IO b
 runCreate token suffix param = do

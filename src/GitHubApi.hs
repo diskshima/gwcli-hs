@@ -6,13 +6,12 @@ module GitHubApi
   (
     createIssue
   , getIssue
-  , issueToIssuePost
+  , getPullRequest
+  , listIssues
+  , listPullRequests
   , prToPullRequestPost
-  , responseToIssue
   , responseToPullRequest
   , runCreate
-  , runItemQuery
-  , runListQuery
   ) where
 
 import           Control.Lens.Operators ((.~), (^.))
@@ -79,9 +78,19 @@ getIssue :: Token -> String -> IO I.Issue
 getIssue token issueId = responseToIssue <$> runItemQuery token path
     where path = "/issues/" ++ issueId
 
+listIssues :: Token -> Bool -> IO [I.Issue]
+listIssues token = runListQuery token "/issues" responseToIssue
+
 createIssue :: Token -> I.Issue -> IO I.Issue
 createIssue token details = responseToIssue <$> runCreate token "/issues" param
   where param = issueToIssuePost details
+
+getPullRequest :: Token -> String -> IO PR.PullRequest
+getPullRequest token prId = responseToPullRequest <$> runItemQuery token path
+  where path = "/pulls/" ++ prId
+
+listPullRequests :: Token -> Bool -> IO [PR.PullRequest]
+listPullRequests token = runListQuery token "/pulls" responseToPullRequest
 
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repos/%s/%s" (organization ri) (repository ri)
