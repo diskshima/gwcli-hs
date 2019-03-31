@@ -14,9 +14,9 @@ module WebUtils
 
 import qualified Data.ByteString.UTF8            as U8
 import           Data.String.Conversions         (convertString)
-import           Network.HTTP                    (Request (..), Response (..), close,
-                                                  receiveHTTP, respondHTTP,
-                                                  socketConnection)
+import           Network.HTTP                    (Request (..), Response (..),
+                                                  close, receiveHTTP,
+                                                  respondHTTP, socketConnection)
 import           Network.HTTP.Conduit            (newManager,
                                                   tlsManagerSettings)
 import           Network.HTTP.Types.URI          (QueryItem, parseQuery)

@@ -97,10 +97,10 @@ instance FromJSON Issues where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
 data PullRequest = PullRequest
-  { pullrequestId    :: Integer
-  , pullrequestTitle :: String
-  , pullrequestLinks :: Links
-  , pullrequestSource :: PullRequestBranch
+  { pullrequestId          :: Integer
+  , pullrequestTitle       :: String
+  , pullrequestLinks       :: Links
+  , pullrequestSource      :: PullRequestBranch
   , pullrequestDestination :: PullRequestBranch
   } deriving (Show, Generic)
 
@@ -108,8 +108,8 @@ instance FromJSON PullRequest where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
 data PullRequestPost = PullRequestPost
-  { pullrequestpostTitle :: String
-  , pullrequestpostSource :: PullRequestBranch
+  { pullrequestpostTitle       :: String
+  , pullrequestpostSource      :: PullRequestBranch
   , pullrequestpostDestination :: PullRequestBranch
   , pullrequestpostDescription :: String
   } deriving (Show, Generic)
