@@ -38,8 +38,8 @@ listPullRequests (GitHub token) showAll = GH.listPullRequests token showAll
 listPullRequests (Bitbucket token) _    = BB.listPullRequests token
 
 createPullRequest :: Remote -> PR.PullRequest -> IO PR.PullRequest
-createPullRequest (GitHub token) = GH.createPullRequest token
-createPullRequest (Bitbucket _) _ = undefined
+createPullRequest (GitHub token)    = GH.createPullRequest token
+createPullRequest (Bitbucket token) = BB.createPullRequest token
 
 open :: Remote -> IO ()
 open remote = do

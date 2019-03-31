@@ -7,6 +7,7 @@ module BitbucketApi
   (
     authenticate
   , createIssue
+  , createPullRequest
   , getIssue
   , getPullRequest
   , listIssues
@@ -99,10 +100,42 @@ data PullRequest = PullRequest
   { pullrequestId    :: Integer
   , pullrequestTitle :: String
   , pullrequestLinks :: Links
+  , pullrequestSource :: PullRequestBranch
+  , pullrequestDestination :: PullRequestBranch
   } deriving (Show, Generic)
 
 instance FromJSON PullRequest where
   parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
+data PullRequestPost = PullRequestPost
+  { pullrequestpostTitle :: String
+  , pullrequestpostSource :: PullRequestBranch
+  , pullrequestpostDestination :: PullRequestBranch
+  , pullrequestpostDescription :: String
+  } deriving (Show, Generic)
+
+instance ToJSON PullRequestPost where
+  toJSON = genericToJSON $ aesonPrefix snakeCase
+
+newtype PullRequestBranch = PullRequestBranch
+  { branchBranch :: BranchDetails
+  } deriving (Show, Generic)
+
+instance FromJSON PullRequestBranch where
+  parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
+instance ToJSON PullRequestBranch where
+  toJSON = genericToJSON $ aesonPrefix snakeCase
+
+newtype BranchDetails = BranchDetails
+  { branchName :: String
+  } deriving (Show, Generic)
+
+instance FromJSON BranchDetails where
+  parseJSON = genericParseJSON $ aesonPrefix snakeCase
+
+instance ToJSON BranchDetails where
+  toJSON = genericToJSON $ aesonPrefix snakeCase
 
 data PullRequests = PullRequests
   { pullrequestsSize   :: Integer
@@ -128,6 +161,11 @@ responseToPullRequest pr =
   PR.PullRequest (Just . show $ pullrequestId pr) (pullrequestTitle pr)
                  "" "" Nothing (Just htmlLink)
                    where htmlLink = urlFromPullRequest pr
+
+prToPullRequestPost :: PR.PullRequest -> PullRequestPost
+prToPullRequestPost pr = PullRequestPost (PR.title pr) source dest (fromMaybe "" (PR.body pr))
+  where source = PullRequestBranch $ BranchDetails (PR.srcBranch pr)
+        dest = PullRequestBranch $ BranchDetails (PR.destBranch pr)
 
 baseUrl :: String
 baseUrl = "https://api.bitbucket.org/2.0"
@@ -226,6 +264,10 @@ listPullRequests token = do
       return $ responseToPullRequest <$> items
     Nothing  -> P.error "Could not identify remote URL."
 
+createPullRequest :: Token -> PR.PullRequest -> IO PR.PullRequest
+createPullRequest token item = responseToPullRequest <$> runCreate token "/pullrequests" param
+  where param = prToPullRequestPost item
+
 getPullRequestsFromUrl :: Token -> String -> IO [PullRequest]
 getPullRequestsFromUrl _ "" = return []
 getPullRequestsFromUrl token url = do
@@ -248,6 +290,7 @@ runItemQuery token suffix = do
 
 runCreate :: (ToJSON a, FromJSON b) => Token -> String -> a -> IO b
 runCreate token suffix param = do
+  -- print $ toJSON param
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
     Just url -> decodeResponseOrError <$> postBitbucket token url (toJSON param)
