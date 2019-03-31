@@ -5,6 +5,7 @@
 module GitHubApi
   (
     createIssue
+  , createPullRequest
   , getIssue
   , getPullRequest
   , listIssues
@@ -91,6 +92,10 @@ getPullRequest token prId = responseToPullRequest <$> runItemQuery token path
 
 listPullRequests :: Token -> Bool -> IO [PR.PullRequest]
 listPullRequests token = runListQuery token "/pulls" responseToPullRequest
+
+createPullRequest :: Token -> PR.PullRequest -> IO PR.PullRequest
+createPullRequest token item = responseToPullRequest <$> runCreate token "/pulls" param
+  where param = prToPullRequestPost item
 
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repos/%s/%s" (organization ri) (repository ri)

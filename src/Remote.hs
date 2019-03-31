@@ -38,9 +38,7 @@ listPullRequests (GitHub token) showAll = GH.listPullRequests token showAll
 listPullRequests (Bitbucket token) _    = BB.listPullRequests token
 
 createPullRequest :: Remote -> PR.PullRequest -> IO PR.PullRequest
-createPullRequest (GitHub token) details =
-  GH.responseToPullRequest <$> GH.runCreate token "/pulls" param
-    where param = GH.prToPullRequestPost details
+createPullRequest (GitHub token) = GH.createPullRequest token
 createPullRequest (Bitbucket _) _ = undefined
 
 open :: Remote -> IO ()
