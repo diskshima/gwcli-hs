@@ -4,16 +4,18 @@
 
 module Main where
 
-import           Data.Yaml             (FromJSON, decodeFileEither)
+import           Data.List             (isInfixOf)
+import           Data.Yaml             (FromJSON, ToJSON, decodeFileEither,
+                                        encodeFile)
 import           GHC.Generics
-import           GitHub                (GitHub (..))
-import           GitUtils              (getCurrentBranch)
+import           GitUtils              (getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
                                         nthOrNothing)
-import           Remote                (Remote, Token, createIssue,
+import           Remote                (authenticate, createIssue,
                                         createPullRequest, getIssue,
                                         getPullRequest, listIssues,
                                         listPullRequests, open)
+import           RemoteTypes           (Remote (..))
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (getHomeDirectory)
@@ -22,15 +24,17 @@ import           System.FilePath       (joinPath)
 import           Text.RawString.QQ
 import qualified Types.Issue           as I
 import qualified Types.PullRequest     as PR
+import           WebUtils              (Token)
 
 data Flag = Help | Verbose | Version
 
 data Credentials = Credentials
-  { github :: Token
-  , zenhub :: Token
+  { github    :: Token
+  , bitbucket :: Token
   } deriving (Show, Generic)
 
 instance FromJSON Credentials
+instance ToJSON Credentials
 
 options :: [OptDescr Flag]
 options =
@@ -72,6 +76,9 @@ readCredential filepath = do
       return Nothing
     Right content -> return content
 
+writeCredential :: FilePath -> Credentials -> IO ()
+writeCredential = encodeFile
+
 paramToIssue :: [String] -> I.Issue
 paramToIssue params = I.Issue Nothing title body Nothing
   where title = head params
@@ -87,7 +94,7 @@ paramsToPullRequest params = do
         dest = nthOrDefault params "master" 1
         body = nthOrNothing params 2
 
-handleIssue :: Remote a => a -> [String] -> IO ()
+handleIssue :: Remote -> [String] -> IO ()
 handleIssue remote params =
   case subsubcommand of
     "show"   -> getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
@@ -102,7 +109,7 @@ handleIssue remote params =
     where subsubcommand = head params
           rest = tail params
 
-handlePullRequest :: Remote a => a -> [String] -> IO ()
+handlePullRequest :: Remote -> [String] -> IO ()
 handlePullRequest remote params =
   case subsubcommand of
     "show"   -> getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
@@ -119,8 +126,30 @@ handlePullRequest remote params =
     where subsubcommand = head params
           rest = tail params
 
+handleAuth :: Remote -> Credentials -> FilePath -> IO ()
+handleAuth remote creds credFilePath = do
+  accessToken <- authenticate remote
+  putStrLn "Fetched access token."
+  let newCreds = Credentials { github = github creds, bitbucket = accessToken }
+  writeCredential credFilePath newCreds
+
+remoteUrlToRemote :: String -> Credentials -> Remote
+remoteUrlToRemote url cred
+  | "bitbucket.org" `isInfixOf` url = Bitbucket (bitbucket cred)
+  | "github.com"    `isInfixOf` url = GitHub (github cred)
+  | otherwise = error "Could not determine remote URL"
+
+chooseRemote :: Credentials -> IO Remote
+chooseRemote c = do
+  remoteUrl <- getRemoteUrl
+  case remoteUrl of
+    Nothing  -> error "Could not determine remote URL."
+    Just url -> return $ remoteUrlToRemote url c
+
 handleHelp :: IO ()
-handleHelp = putStr [r|issue create|show|list
+handleHelp = putStr [r|
+auth
+issue create|show|list
 pullrequest create|show|list
 browse
 help
@@ -130,14 +159,16 @@ main :: IO ()
 main = do
   args <- getArgs
   homeDir <- getHomeDirectory
-  cred <- readCredential $ joinPath [homeDir, ".gwcli.yaml"]
+  let credFilePath = joinPath [homeDir, ".gwcli.yaml"]
+  cred <- readCredential credFilePath
   case cred of
     Nothing -> printError "Failed to read credentials file."
     Just c -> do
-      let remote = GitHub $ github c
+      remote <- chooseRemote c
       case getOpt RequireOrder options args of
         (_, n, [])   ->
           case head n of
+            "auth"        -> handleAuth remote c credFilePath
             "issue"       -> handleIssue remote (tail n)
             "pullrequest" -> handlePullRequest remote (tail n)
             "browse"      -> open remote
