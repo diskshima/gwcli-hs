@@ -72,21 +72,25 @@ receiveWebRequest portNum = do
       Network.HTTP.close hs
       return queryItems
 
-fetchOAuth2AccessToken :: OAuth2 -> U8.ByteString -> IO String
+fetchOAuth2AccessToken :: OAuth2 -> U8.ByteString -> IO Tokens
 fetchOAuth2AccessToken oauth2 authCode = do
   manager <- newManager tlsManagerSettings
   let textAuthCode = convertString authCode
   resp <- fetchAccessToken manager oauth2 ExchangeToken { extoken = textAuthCode }
-  return $ extractAccessToken resp
+  return $ responseToTokens resp
 
 refreshOAuth2AccessToken :: OAuth2 -> U8.ByteString -> IO Tokens
 refreshOAuth2AccessToken oauth2 refreshToken = do
   manager <- newManager tlsManagerSettings
   let textRefreshToken = convertString refreshToken
   resp <- refreshAccessToken manager oauth2 RefreshToken { rtoken = textRefreshToken }
-  let newAccessToken = extractAccessToken resp
-      newRefreshToken = extractRefreshToken resp
-  return Tokens { accessToken = newAccessToken, refreshToken = newRefreshToken }
+  return $ responseToTokens resp
+
+responseToTokens :: OAuth2Result Errors OAuth2Token -> Tokens
+responseToTokens resp =
+  Tokens { accessToken = newAccessToken, refreshToken = newRefreshToken }
+    where newAccessToken = extractAccessToken resp
+          newRefreshToken = extractRefreshToken resp
 
 extractAccessToken :: OAuth2Result Errors OAuth2Token -> String
 extractAccessToken (Left err) = P.error $ show err

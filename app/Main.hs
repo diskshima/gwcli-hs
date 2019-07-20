@@ -1,13 +1,11 @@
-{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 
 module Main where
 
+import           CredentialUtils       (Credentials (..), credFilePath,
+                                        readCredential, writeCredential)
 import           Data.List             (isInfixOf)
-import           Data.Yaml             (FromJSON, ToJSON, decodeFileEither,
-                                        encodeFile)
-import           GHC.Generics
 import           GitUtils              (getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
                                         nthOrNothing)
@@ -18,23 +16,13 @@ import           Remote                (authenticate, createIssue,
 import           RemoteTypes           (Remote (..))
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
-import           System.Directory      (getHomeDirectory)
 import           System.Environment    (getArgs)
-import           System.FilePath       (joinPath)
 import           Text.RawString.QQ
 import qualified Types.Issue           as I
 import qualified Types.PullRequest     as PR
-import           WebUtils              (Token)
+import           WebUtils              as WU
 
 data Flag = Help | Verbose | Version
-
-data Credentials = Credentials
-  { github    :: Token
-  , bitbucket :: Token
-  } deriving (Show, Generic)
-
-instance FromJSON Credentials
-instance ToJSON Credentials
 
 options :: [OptDescr Flag]
 options =
@@ -66,18 +54,6 @@ defaultPullRequestOptions = PullRequestOptions { prOptAll = False }
 
 printError :: String -> IO ()
 printError = ioError . userError
-
-readCredential :: FilePath -> IO (Maybe Credentials)
-readCredential filepath = do
-  file <- decodeFileEither filepath
-  case file of
-    Left err -> do
-      print err
-      return Nothing
-    Right content -> return content
-
-writeCredential :: FilePath -> Credentials -> IO ()
-writeCredential = encodeFile
 
 paramToIssue :: [String] -> I.Issue
 paramToIssue params = I.Issue Nothing title body Nothing
@@ -127,16 +103,16 @@ handlePullRequest remote params =
           rest = tail params
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
-handleAuth remote creds credFilePath = do
-  accessToken <- authenticate remote
+handleAuth remote creds credFP = do
+  tokens <- authenticate remote
   putStrLn "Fetched access token."
-  let newCreds = Credentials { github = github creds, bitbucket = accessToken }
-  writeCredential credFilePath newCreds
+  let newCreds = Credentials { github = github creds, bitbucket = tokens }
+  writeCredential credFP newCreds
 
 remoteUrlToRemote :: String -> Credentials -> Remote
 remoteUrlToRemote url cred
-  | "bitbucket" `isInfixOf` url = Bitbucket (bitbucket cred)
-  | "github.com"    `isInfixOf` url = GitHub (github cred)
+  | "bitbucket"  `isInfixOf` url = Bitbucket (WU.accessToken . bitbucket $ cred)
+  | "github.com" `isInfixOf` url = GitHub (github cred)
   | otherwise = error "Could not determine remote URL"
 
 chooseRemote :: Credentials -> IO Remote
@@ -158,9 +134,8 @@ help
 main :: IO ()
 main = do
   args <- getArgs
-  homeDir <- getHomeDirectory
-  let credFilePath = joinPath [homeDir, ".gwcli.yaml"]
-  cred <- readCredential credFilePath
+  credFP <- credFilePath
+  cred <- readCredential credFP
   case cred of
     Nothing -> printError "Failed to read credentials file."
     Just c -> do
@@ -168,7 +143,7 @@ main = do
       case getOpt RequireOrder options args of
         (_, n, [])   ->
           case head n of
-            "auth"        -> handleAuth remote c credFilePath
+            "auth"        -> handleAuth remote c credFP
             "issue"       -> handleIssue remote (tail n)
             "pullrequest" -> handlePullRequest remote (tail n)
             "browse"      -> open remote
