@@ -36,7 +36,6 @@ import           Network.Wreq                 (Options, Response, defaults,
                                                getWith, header, postWith)
 import           Network.Wreq.Types           (Postable)
 import           Prelude                      as P
-import           StringUtils                  as SU
 import           System.Environment           (lookupEnv)
 import           Text.Printf                  (printf)
 import qualified Types.Issue                  as I
@@ -174,10 +173,10 @@ baseUrl = "https://api.bitbucket.org/2.0"
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repositories/%s/%s" (organization ri) (repository ri)
 
-bitbucketKey :: String -> OAuth2
-bitbucketKey clientId =
+bitbucketKey :: String -> String -> OAuth2
+bitbucketKey clientId clientSecret =
   OAuth2 { oauthClientId = (TL.toStrict . TL.pack) clientId
-          , oauthClientSecret = ""
+          , oauthClientSecret = (TL.toStrict . TL.pack) clientSecret
           , oauthCallback = Just [uri|http://127.0.0.1:8080/bitbucketCallback|]
           , oauthOAuthorizeEndpoint = [uri|https://bitbucket.org/site/oauth2/authorize|]
           , oauthAccessTokenEndpoint = [uri|https://bitbucket.org/site/oauth2/access_token|]
@@ -194,14 +193,17 @@ authenticate = do
   case mClientId of
     Nothing -> P.error "Missing Bitbucket Client ID"
     Just clientId -> do
-      let oauth2Key = bitbucketKey clientId
-      let authUrl = BL8.unpack $ toLazyByteString $ serializeURIRef $ authorizationUrl oauth2Key
-      let grantFlowUrl = SU.replace "response_type=code" "response_type=token" authUrl
-      P.putStrLn "Please access the below URL:"
-      P.putStrLn grantFlowUrl
-      queryItems <- receiveWebRequest 8080
-      let authCode = extractAuthCode queryItems
-      fetchOAuth2AccessToken oauth2Key authCode
+      mClientSecret <- lookupEnv "BITBUCKET_CLIENT_SECRET"
+      case mClientSecret of
+        Nothing -> P.error "Missing Bitbucket Client ID"
+        Just clientSecret -> do
+          let oauth2Key = bitbucketKey clientId clientSecret
+          let authUrl = BL8.unpack $ toLazyByteString $ serializeURIRef $ authorizationUrl oauth2Key
+          P.putStrLn "Please access the below URL:"
+          P.putStrLn authUrl
+          queryItems <- receiveWebRequest 8080
+          let authCode = extractAuthCode queryItems
+          fetchOAuth2AccessToken oauth2Key authCode
 
 buildUrl :: String -> Maybe ParamList -> IO (Maybe String)
 buildUrl suffix maybeParams = do
