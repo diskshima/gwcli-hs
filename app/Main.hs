@@ -135,7 +135,7 @@ handleAuth remote creds credFilePath = do
 
 remoteUrlToRemote :: String -> Credentials -> Remote
 remoteUrlToRemote url cred
-  | "bitbucket.org" `isInfixOf` url = Bitbucket (bitbucket cred)
+  | "bitbucket" `isInfixOf` url = Bitbucket (bitbucket cred)
   | "github.com"    `isInfixOf` url = GitHub (github cred)
   | otherwise = error "Could not determine remote URL"
 
