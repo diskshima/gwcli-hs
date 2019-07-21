@@ -14,7 +14,10 @@ module BitbucketApi
   , listPullRequests
   ) where
 
+import           Control.Lens                 ((^.))
 import           Control.Lens.Operators       ((.~))
+import           CredentialUtils              (Credentials (..), credFilePath,
+                                               readCredential, writeCredential)
 import           Data.Aeson                   (FromJSON (parseJSON),
                                                ToJSON (..), genericParseJSON,
                                                genericToJSON)
@@ -25,6 +28,7 @@ import           Data.ByteString.Lazy.Char8   as BL8
 import qualified Data.ByteString.UTF8         as U8
 import           Data.Function                ((&))
 import           Data.Maybe                   (fromMaybe)
+import           Data.String.Conversions      (convertString)
 import           Data.Text.Lazy               as TL
 import           GHC.Generics
 import           GitUtils                     (RepoInfo (..), repoInfoFromRepo)
@@ -33,7 +37,8 @@ import           JsonUtils                    (decodeResponse,
 import           Network.HTTP.Types.URI       (QueryItem, renderQuery)
 import           Network.OAuth.OAuth2         (OAuth2 (..), authorizationUrl)
 import           Network.Wreq                 (Options, Response, defaults,
-                                               getWith, header, postWith)
+                                               getWith, header, postWith,
+                                               responseStatus, statusCode)
 import           Network.Wreq.Types           (Postable)
 import           Prelude                      as P
 import           System.Environment           (lookupEnv)
@@ -42,9 +47,10 @@ import qualified Types.Issue                  as I
 import qualified Types.PullRequest            as PR
 import           URI.ByteString               (serializeURIRef)
 import           URI.ByteString.QQ
-import           WebUtils                     (ParamList, Token,
+import           WebUtils                     (ParamList, Token, Tokens (..),
                                                fetchOAuth2AccessToken,
-                                               receiveWebRequest)
+                                               receiveWebRequest,
+                                               refreshOAuth2AccessToken)
 
 newtype Html = Html
   { htmlHref :: String
@@ -182,28 +188,31 @@ bitbucketKey clientId clientSecret =
           , oauthAccessTokenEndpoint = [uri|https://bitbucket.org/site/oauth2/access_token|]
 }
 
-extractAuthCode :: [QueryItem] -> U8.ByteString
-extractAuthCode queryItems = do
-  let mbAuthCode = (snd . P.head) $ P.filter (\i -> fst i == U8.fromString "code") queryItems
-  fromMaybe (P.error "Could not find authorization code") mbAuthCode
-
-authenticate :: IO String
-authenticate = do
+buildBitbucketKey :: IO OAuth2
+buildBitbucketKey = do
   mClientId <- lookupEnv "BITBUCKET_CLIENT_ID"
   case mClientId of
     Nothing -> P.error "Missing Bitbucket Client ID"
     Just clientId -> do
       mClientSecret <- lookupEnv "BITBUCKET_CLIENT_SECRET"
       case mClientSecret of
-        Nothing -> P.error "Missing Bitbucket Client ID"
-        Just clientSecret -> do
-          let oauth2Key = bitbucketKey clientId clientSecret
-          let authUrl = BL8.unpack $ toLazyByteString $ serializeURIRef $ authorizationUrl oauth2Key
-          P.putStrLn "Please access the below URL:"
-          P.putStrLn authUrl
-          queryItems <- receiveWebRequest 8080
-          let authCode = extractAuthCode queryItems
-          fetchOAuth2AccessToken oauth2Key authCode
+        Nothing           -> P.error "Missing Bitbucket Client Secret"
+        Just clientSecret -> return $ bitbucketKey clientId clientSecret
+
+extractAuthCode :: [QueryItem] -> U8.ByteString
+extractAuthCode queryItems = do
+  let mbAuthCode = (snd . P.head) $ P.filter (\i -> fst i == U8.fromString "code") queryItems
+  fromMaybe (P.error "Could not find authorization code") mbAuthCode
+
+authenticate :: IO Tokens
+authenticate = do
+  oauth2Key <- buildBitbucketKey
+  let authUrl = BL8.unpack $ toLazyByteString $ serializeURIRef $ authorizationUrl oauth2Key
+  P.putStrLn "Please access the below URL:"
+  P.putStrLn authUrl
+  queryItems <- receiveWebRequest 8080
+  let authCode = extractAuthCode queryItems
+  fetchOAuth2AccessToken oauth2Key authCode
 
 buildUrl :: String -> Maybe ParamList -> IO (Maybe String)
 buildUrl suffix maybeParams = do
@@ -218,8 +227,30 @@ buildUrl suffix maybeParams = do
 bearerAuthHeader :: Token -> Options
 bearerAuthHeader token = defaults & header "Authorization" .~ [U8.fromString $ "Bearer " ++ token]
 
+refreshAccessToken :: IO Token
+refreshAccessToken = do
+  filepath <- credFilePath
+  mbCreds <- readCredential filepath
+  let creds = fromMaybe (P.error "Missing credentials") mbCreds
+  let bbRefreshToken = WebUtils.refreshToken . bitbucket $ creds
+  oauth2 <- buildBitbucketKey
+  tokens <- refreshOAuth2AccessToken oauth2 (convertString bbRefreshToken)
+  let newCreds = Credentials {
+      github = github creds
+    , bitbucket = tokens
+  }
+  writeCredential filepath newCreds
+  return $ WebUtils.accessToken tokens
+
 getBitbucket :: Token -> String -> IO (Response BL.ByteString)
-getBitbucket token = getWith $ bearerAuthHeader token
+getBitbucket token url = do
+  response <- getWith (bearerAuthHeader token) url
+  let code = response ^. (responseStatus . statusCode)
+  case code of
+    401 -> do
+      newToken <- refreshAccessToken
+      getWith (bearerAuthHeader newToken) url
+    _   -> return response
 
 getIssue :: Token -> String -> IO I.Issue
 getIssue token itemId = responseToIssue <$> runItemQuery token path

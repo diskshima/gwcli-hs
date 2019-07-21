@@ -59,7 +59,6 @@ executables:
     - -with-rtsopts=-N
     - -Wall
     - -Werror
-    - -O4
 
 tests:
   gwcli-test:

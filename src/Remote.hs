@@ -12,8 +12,9 @@ import           RemoteTypes       (Remote (..))
 import           Text.Printf       (printf)
 import qualified Types.Issue       as I
 import qualified Types.PullRequest as PR
+import           WebUtils          (Tokens)
 
-authenticate :: Remote -> IO String
+authenticate :: Remote -> IO Tokens
 authenticate (GitHub _)    = undefined
 authenticate (Bitbucket _) = BB.authenticate
 
