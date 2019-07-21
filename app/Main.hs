@@ -124,12 +124,22 @@ chooseRemote c = do
 
 handleHelp :: IO ()
 handleHelp = putStr [r|
-auth
-issue create|show|list
-pullrequest create|show|list
-browse
-help
+auth/au
+issue/is create|show|list
+pullrequest/pr create|show|list
+browse/br
+help/h
 |]
+
+dispatchSubcommand :: [String] -> Remote -> Credentials -> FilePath -> IO ()
+dispatchSubcommand opts remote c credFP
+  | sc == "auth" || sc == "au"        = handleAuth remote c credFP
+  | sc == "issue" || sc == "is"       = handleIssue remote rest
+  | sc == "pullrequest" || sc == "pr" = handlePullRequest remote rest
+  | sc == "browse" || sc == "br"      = open remote
+  | sc == "help" || sc == "h"         = handleHelp
+  | otherwise                         = printError "Please specify subcommand"
+    where (sc : rest) = opts
 
 main :: IO ()
 main = do
@@ -141,13 +151,6 @@ main = do
     Just c -> do
       remote <- chooseRemote c
       case getOpt RequireOrder options args of
-        (_, n, [])   ->
-          case head n of
-            "auth"        -> handleAuth remote c credFP
-            "issue"       -> handleIssue remote (tail n)
-            "pullrequest" -> handlePullRequest remote (tail n)
-            "browse"      -> open remote
-            "help"        -> handleHelp
-            _             -> printError "Please specify subcommand"
+        (_, n, [])   -> dispatchSubcommand n remote c credFP
         (_, _, errs) -> printError $ concat errs ++ usageInfo header options
       where header = "Usage: gwcli subcommand"
