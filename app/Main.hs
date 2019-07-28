@@ -5,7 +5,7 @@ module Main where
 
 import           CredentialUtils       (Credentials (..), credFilePath,
                                         readCredential, writeCredential)
-import           Data.List             (isInfixOf)
+import           Data.List             (isInfixOf, isPrefixOf)
 import           GitUtils              (getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin, nthOrDefault,
                                         nthOrNothing)
@@ -71,36 +71,34 @@ paramsToPullRequest params = do
         body = nthOrNothing params 2
 
 handleIssue :: Remote -> [String] -> IO ()
-handleIssue remote params =
-  case subsubcommand of
-    "show"   -> getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
-    "list"   -> do
-      issues <- listIssues remote showAll
-      putStrLn $ formatEachAndJoin issues I.formatIssue
-        where (parsed, _, _) = getOpt RequireOrder issueOptions rest
-              IssueOptions { iOptAll = showAll } = foldl (flip id) defaultIssueOptions parsed
-    "create" -> createIssue remote (paramToIssue rest)
+handleIssue remote params
+  | ssc `isPrefixOf` "show" = getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
+  | ssc `isPrefixOf` "list" = do
+    issues <- listIssues remote showAll
+    putStrLn $ formatEachAndJoin issues I.formatIssue
+  | ssc `isPrefixOf` "create" = createIssue remote (paramToIssue rest)
                   >>= (putStrLn . I.formatIssue)
-    _      -> printError $ "Subcommand " ++ subsubcommand ++ " not supported"
-    where subsubcommand = head params
+  | otherwise = printError $ "Subcommand " ++ ssc ++ " not supported"
+    where ssc = head params
           rest = tail params
+          (parsed, _, _) = getOpt RequireOrder issueOptions rest
+          IssueOptions { iOptAll = showAll } = foldl (flip id) defaultIssueOptions parsed
 
 handlePullRequest :: Remote -> [String] -> IO ()
-handlePullRequest remote params =
-  case subsubcommand of
-    "show"   -> getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
-    "list"   -> do
+handlePullRequest remote params
+  | ssc `isPrefixOf` "show" = getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
+  | ssc `isPrefixOf` "list" = do
       prs <- listPullRequests remote showAll
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
-        where (parsed, _, _) = getOpt RequireOrder pullRequestOptions rest
-              PullRequestOptions { prOptAll = showAll } = foldl (flip id) defaultPullRequestOptions parsed
-    "create" -> do
+  | ssc `isPrefixOf` "create" = do
       pr <- paramsToPullRequest rest
       response <- createPullRequest remote pr
       putStrLn $ PR.formatPullRequest response
-    _        -> printError $ "Command " ++ subsubcommand ++ " not supported"
-    where subsubcommand = head params
+  | otherwise = printError $ "Command " ++ ssc ++ " not supported"
+    where ssc = head params
           rest = tail params
+          (parsed, _, _) = getOpt RequireOrder pullRequestOptions rest
+          PullRequestOptions { prOptAll = showAll } = foldl (flip id) defaultPullRequestOptions parsed
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
 handleAuth remote creds credFP = do
@@ -131,6 +129,16 @@ browse
 help
 |]
 
+dispatchSubcommand :: [String] -> Remote -> Credentials -> FilePath -> IO ()
+dispatchSubcommand opts remote c credFP
+  | sc `isPrefixOf` "auth"        = handleAuth remote c credFP
+  | sc `isPrefixOf` "issue"       = handleIssue remote rest
+  | sc `isPrefixOf` "pullrequest" = handlePullRequest remote rest
+  | sc `isPrefixOf` "browse"      = open remote
+  | sc `isPrefixOf` "help"        = handleHelp
+  | otherwise                     = printError "Please specify subcommand"
+    where (sc : rest) = opts
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -141,13 +149,6 @@ main = do
     Just c -> do
       remote <- chooseRemote c
       case getOpt RequireOrder options args of
-        (_, n, [])   ->
-          case head n of
-            "auth"        -> handleAuth remote c credFP
-            "issue"       -> handleIssue remote (tail n)
-            "pullrequest" -> handlePullRequest remote (tail n)
-            "browse"      -> open remote
-            "help"        -> handleHelp
-            _             -> printError "Please specify subcommand"
+        (_, n, [])   -> dispatchSubcommand n remote c credFP
         (_, _, errs) -> printError $ concat errs ++ usageInfo header options
       where header = "Usage: gwcli subcommand"
