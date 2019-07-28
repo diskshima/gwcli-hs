@@ -1,5 +1,5 @@
 name:                gwcli
-version:             0.1.0.0
+version:             0.2.0.0
 github:              "diskshima/gwcli-hs"
 license:             BSD3
 author:              "Daisuke Shimamoto"
@@ -44,9 +44,6 @@ dependencies:
 - wreq
 - yaml
 
-library:
-  source-dirs: src
-
 executables:
   gwcli:
     main:                Main.hs
@@ -59,6 +56,7 @@ executables:
     - -with-rtsopts=-N
     - -Wall
     - -Werror
+    - -O4
 
 tests:
   gwcli-test:
