@@ -1,5 +1,6 @@
-resolver: lts-14.25
+resolver: lts-16.5
 
 extra-deps:
-- git-0.3.0
+- github: kquick/hs-git
+  commit: fdb7973ff2c482124d7806906a24bdfc5b94b989
 - patience-0.2.1.0
