@@ -179,10 +179,10 @@ baseUrl = "https://api.bitbucket.org/2.0"
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repositories/%s/%s" (organization ri) (repository ri)
 
-bitbucketKey :: String -> String -> OAuth2
+bitbucketKey :: String -> Maybe String -> OAuth2
 bitbucketKey clientId clientSecret =
   OAuth2 { oauthClientId = (TL.toStrict . TL.pack) clientId
-          , oauthClientSecret = (TL.toStrict . TL.pack) clientSecret
+          , oauthClientSecret = TL.toStrict . TL.pack <$> clientSecret
           , oauthCallback = Just [uri|http://127.0.0.1:8080/bitbucketCallback|]
           , oauthOAuthorizeEndpoint = [uri|https://bitbucket.org/site/oauth2/authorize|]
           , oauthAccessTokenEndpoint = [uri|https://bitbucket.org/site/oauth2/access_token|]
@@ -195,9 +195,7 @@ buildBitbucketKey = do
     Nothing -> P.error "Missing Bitbucket Client ID"
     Just clientId -> do
       mClientSecret <- lookupEnv "BITBUCKET_CLIENT_SECRET"
-      case mClientSecret of
-        Nothing           -> P.error "Missing Bitbucket Client Secret"
-        Just clientSecret -> return $ bitbucketKey clientId clientSecret
+      return $ bitbucketKey clientId mClientSecret
 
 extractAuthCode :: [QueryItem] -> U8.ByteString
 extractAuthCode queryItems = do
