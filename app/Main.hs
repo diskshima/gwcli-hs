@@ -30,13 +30,13 @@ options =
   , Option ['h']["help"] (NoArg Help) "Help"
   ]
 
-newtype IssueOptions = IssueOptions { iOptAll :: Bool }
+newtype IssueListOptions = IssueListOptions { iOptAll :: Bool }
 
-defaultIssueOptions :: IssueOptions
-defaultIssueOptions = IssueOptions { iOptAll = False }
+defaultIssueListOptions :: IssueListOptions
+defaultIssueListOptions = IssueListOptions { iOptAll = False }
 
-issueOptions :: [OptDescr (IssueOptions -> IssueOptions)]
-issueOptions =
+issueListOptions :: [OptDescr (IssueListOptions -> IssueListOptions)]
+issueListOptions =
   [ Option ['a']["all"]
       (NoArg (\opts -> opts { iOptAll = True }))
        "show all issues"
@@ -76,6 +76,8 @@ handleIssue :: Remote -> [String] -> IO ()
 handleIssue remote params
   | ssc `isPrefixOf` "show" = getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
   | ssc `isPrefixOf` "list" = do
+    let (parsed, _, _) = getOpt RequireOrder issueListOptions rest
+        IssueListOptions { iOptAll = showAll } = foldl (flip id) defaultIssueListOptions parsed
     issues <- listIssues remote showAll
     putStrLn $ formatEachAndJoin issues I.formatIssue
   | ssc `isPrefixOf` "create" = createIssue remote (paramToIssue rest)
@@ -83,8 +85,6 @@ handleIssue remote params
   | otherwise = printError $ "Subcommand " ++ ssc ++ " not supported"
     where ssc = head params
           rest = tail params
-          (parsed, _, _) = getOpt RequireOrder issueOptions rest
-          IssueOptions { iOptAll = showAll } = foldl (flip id) defaultIssueOptions parsed
 
 handlePullRequest :: Remote -> [String] -> IO ()
 handlePullRequest remote params
