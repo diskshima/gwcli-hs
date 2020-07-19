@@ -54,23 +54,23 @@ pullRequestListOptions =
   ]
 
 data PullRequestCreateOptions =
-  PullRequestCreateOptions { base :: String , title :: String, body :: String }
+  PullRequestCreateOptions { prcoBase :: String , prcoTitle :: String, prcoBody :: String }
 
 defaultPullRequestCreateOptions :: PullRequestCreateOptions
 defaultPullRequestCreateOptions =
-  PullRequestCreateOptions { base = "master" , title = "", body = "" }
+  PullRequestCreateOptions { prcoBase = "master" , prcoTitle = "", prcoBody = "" }
 
 pullRequestCreateOptions :: [OptDescr (PullRequestCreateOptions -> PullRequestCreateOptions)]
 pullRequestCreateOptions =
   [ Option ['t'] ["title"]
-      (ReqArg (\t opts -> opts { title = t }) "TITLE")
-      "Title"
+      (ReqArg (\title opts -> opts { prcoTitle = title }) "TITLE")
+      "Pull request title"
   , Option ['b'] ["base"]
-      (ReqArg (\b opts -> opts { base = b }) "BRANCH")
-      "Base branch"
+      (ReqArg (\base opts -> opts { prcoBase = base }) "BRANCH")
+      "Base (destination) branch"
   , Option ['m'] ["message"]
-      (ReqArg (\m opts -> opts { body = m }) "BODY")
-      "Message"
+      (ReqArg (\msg opts -> opts { prcoBody = msg }) "BODY")
+      "Pull request message (body)"
   ]
 
 printError :: String -> IO ()
@@ -82,13 +82,13 @@ paramToIssue params = I.Issue Nothing t b Nothing
         b = nthOrNothing params 1
 
 paramsToPullRequest :: PullRequestCreateOptions -> IO PR.PullRequest
-paramsToPullRequest params = do
+paramsToPullRequest opts = do
   maybeBranch <- getCurrentBranch
   case maybeBranch of
-    Just src -> return $ PR.PullRequest Nothing t src b (Just m) Nothing
+    Just src -> return $ PR.PullRequest Nothing title src base (Just body) Nothing
     Nothing  -> error "Failed to retrieve source branch."
   where
-    PullRequestCreateOptions { title = t, base = b, body = m } = params
+    PullRequestCreateOptions { prcoTitle = title, prcoBase = base, prcoBody = body } = opts
 
 handleIssue :: Remote -> [String] -> IO ()
 handleIssue remote params
