@@ -7,7 +7,7 @@ import           CredentialUtils       (Credentials (..), credFilePath,
                                         readCredential, writeCredential)
 import           Data.List             (isInfixOf, isPrefixOf)
 import           GitUtils              (getCurrentBranch, getRemoteUrl)
-import           ListUtils             (formatEachAndJoin, nthOrNothing)
+import           ListUtils             (formatEachAndJoin)
 import           Remote                (authenticate, createIssue,
                                         createPullRequest, getIssue,
                                         getPullRequest, listIssues,
@@ -39,6 +39,22 @@ issueListOptions =
   [ Option ['a']["all"]
       (NoArg (\opts -> opts { iOptAll = True }))
        "show all issues"
+  ]
+
+data IssueCreateOptions =
+  IssueCreateOptions { iscoTitle :: String, iscoBody :: String }
+
+defaultIssueCreateOptions :: IssueCreateOptions
+defaultIssueCreateOptions = IssueCreateOptions { iscoTitle = "", iscoBody = "" }
+
+issueCreateOptions :: [OptDescr (IssueCreateOptions -> IssueCreateOptions)]
+issueCreateOptions =
+  [ Option ['t'] ["title"]
+      (ReqArg (\title opts -> opts { iscoTitle = title }) "TITLE")
+      "Issue title"
+  , Option ['m'] ["message"]
+      (ReqArg (\msg opts -> opts { iscoBody = msg }) "BODY")
+      "Issue message (body)"
   ]
 
 newtype PullRequestListOptions = PullRequestListOptions { prOptAll :: Bool }
@@ -76,10 +92,9 @@ pullRequestCreateOptions =
 printError :: String -> IO ()
 printError = ioError . userError
 
-paramToIssue :: [String] -> I.Issue
-paramToIssue params = I.Issue Nothing t b Nothing
-  where t = head params
-        b = nthOrNothing params 1
+paramsToIssue :: IssueCreateOptions -> I.Issue
+paramsToIssue params = I.Issue Nothing title (Just body) Nothing
+  where IssueCreateOptions { iscoTitle = title, iscoBody = body } = params
 
 paramsToPullRequest :: PullRequestCreateOptions -> IO PR.PullRequest
 paramsToPullRequest opts = do
@@ -98,8 +113,11 @@ handleIssue remote params
         IssueListOptions { iOptAll = showAll } = foldl (flip id) defaultIssueListOptions parsed
     issues <- listIssues remote showAll
     putStrLn $ formatEachAndJoin issues I.formatIssue
-  | ssc `isPrefixOf` "create" = createIssue remote (paramToIssue rest)
-                  >>= (putStrLn . I.formatIssue)
+  | ssc `isPrefixOf` "create" = do
+      let (parsed, _, _) = getOpt RequireOrder issueCreateOptions rest
+          cParams = foldl (flip id) defaultIssueCreateOptions parsed
+      response <- createIssue remote (paramsToIssue cParams)
+      putStrLn $ I.formatIssue response
   | otherwise = printError $ "Subcommand " ++ ssc ++ " not supported"
     where ssc = head params
           rest = tail params
