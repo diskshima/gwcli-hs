@@ -6,9 +6,9 @@ module Main where
 import           CredentialUtils       (Credentials (..), credFilePath,
                                         readCredential, writeCredential)
 import           Data.List             (isInfixOf, isPrefixOf)
+import           Data.Maybe            (fromMaybe)
 import           GitUtils              (getCurrentBranch, getRemoteUrl)
-import           ListUtils             (formatEachAndJoin, nthOrDefault,
-                                        nthOrNothing)
+import           ListUtils             (formatEachAndJoin, nthOrNothing)
 import           Remote                (authenticate, createIssue,
                                         createPullRequest, getIssue,
                                         getPullRequest, listIssues,
@@ -54,23 +54,42 @@ pullRequestListOptions =
        "show all pull requests"
   ]
 
+data PullRequestCreateOptions =
+  PullRequestCreateOptions { base :: String , title :: String, body :: String }
+
+defaultPullRequestCreateOptions :: PullRequestCreateOptions
+defaultPullRequestCreateOptions =
+  PullRequestCreateOptions { base = "master" , title = "", body = "" }
+
+pullRequestCreateOptions :: [OptDescr (PullRequestCreateOptions -> PullRequestCreateOptions)]
+pullRequestCreateOptions =
+  [ Option ['t'] ["title"]
+      (ReqArg (\t opts -> opts { title = t }) "TITLE")
+      "Title"
+  , Option ['b'] ["base"]
+      (OptArg ((\b opts -> opts { base = b }) . fromMaybe "master") "BRANCH")
+      "Base branch"
+  , Option ['m'] ["message"]
+      (OptArg ((\m opts -> opts { body = m }) . fromMaybe "") "BODY")
+      "Message"
+  ]
+
 printError :: String -> IO ()
 printError = ioError . userError
 
 paramToIssue :: [String] -> I.Issue
-paramToIssue params = I.Issue Nothing title body Nothing
-  where title = head params
-        body = nthOrNothing params 1
+paramToIssue params = I.Issue Nothing t b Nothing
+  where t = head params
+        b = nthOrNothing params 1
 
-paramsToPullRequest :: [String] -> IO PR.PullRequest
+paramsToPullRequest :: PullRequestCreateOptions -> IO PR.PullRequest
 paramsToPullRequest params = do
   maybeBranch <- getCurrentBranch
   case maybeBranch of
-    Just src -> return $ PR.PullRequest Nothing title src dest body Nothing
+    Just src -> return $ PR.PullRequest Nothing t src b (Just m) Nothing
     Nothing  -> error "Failed to retrieve source branch."
-  where title = head params
-        dest = nthOrDefault params "master" 1
-        body = nthOrNothing params 2
+  where
+    PullRequestCreateOptions { title = t, base = b, body = m } = params
 
 handleIssue :: Remote -> [String] -> IO ()
 handleIssue remote params
@@ -96,7 +115,9 @@ handlePullRequest remote params
       prs <- listPullRequests remote showAll
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
   | ssc `isPrefixOf` "create" = do
-      pr <- paramsToPullRequest rest
+      let (parsed, _, _) = getOpt RequireOrder pullRequestCreateOptions rest
+          cParams = foldl (flip id) defaultPullRequestCreateOptions parsed
+      pr <- paramsToPullRequest cParams
       response <- createPullRequest remote pr
       putStrLn $ PR.formatPullRequest response
   | otherwise = printError $ "Command " ++ ssc ++ " not supported"
