@@ -129,14 +129,17 @@ browse
 help
 |]
 
+isPullRequestSubCommand :: String -> Bool
+isPullRequestSubCommand cmd = isPrefixOf "pullrequest" cmd || cmd == "pr"
+
 dispatchSubcommand :: [String] -> Remote -> Credentials -> FilePath -> IO ()
 dispatchSubcommand opts remote c credFP
-  | sc `isPrefixOf` "auth"        = handleAuth remote c credFP
-  | sc `isPrefixOf` "issue"       = handleIssue remote rest
-  | sc `isPrefixOf` "pullrequest" = handlePullRequest remote rest
-  | sc `isPrefixOf` "browse"      = open remote
-  | sc `isPrefixOf` "help"        = handleHelp
-  | otherwise                     = printError "Please specify subcommand"
+  | sc `isPrefixOf` "auth"     = handleAuth remote c credFP
+  | sc `isPrefixOf` "issue"    = handleIssue remote rest
+  | isPullRequestSubCommand sc = handlePullRequest remote rest
+  | sc `isPrefixOf` "browse"   = open remote
+  | sc `isPrefixOf` "help"     = handleHelp
+  | otherwise                  = printError "Please specify subcommand"
     where (sc : rest) = opts
 
 main :: IO ()
