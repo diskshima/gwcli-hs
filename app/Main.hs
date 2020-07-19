@@ -31,6 +31,10 @@ options =
   ]
 
 newtype IssueOptions = IssueOptions { iOptAll :: Bool }
+
+defaultIssueOptions :: IssueOptions
+defaultIssueOptions = IssueOptions { iOptAll = False }
+
 issueOptions :: [OptDescr (IssueOptions -> IssueOptions)]
 issueOptions =
   [ Option ['a']["all"]
@@ -38,19 +42,17 @@ issueOptions =
        "show all issues"
   ]
 
-defaultIssueOptions :: IssueOptions
-defaultIssueOptions = IssueOptions { iOptAll = False }
+newtype PullRequestListOptions = PullRequestListOptions { prOptAll :: Bool }
 
-newtype PullRequestOptions = PullRequestOptions { prOptAll :: Bool }
-pullRequestOptions :: [OptDescr (PullRequestOptions -> PullRequestOptions)]
-pullRequestOptions =
+defaultPullRequestListOptions :: PullRequestListOptions
+defaultPullRequestListOptions = PullRequestListOptions { prOptAll = False }
+
+pullRequestListOptions :: [OptDescr (PullRequestListOptions -> PullRequestListOptions)]
+pullRequestListOptions =
   [ Option ['a']["all"]
       (NoArg (\opts -> opts { prOptAll = True }))
        "show all pull requests"
   ]
-
-defaultPullRequestOptions :: PullRequestOptions
-defaultPullRequestOptions = PullRequestOptions { prOptAll = False }
 
 printError :: String -> IO ()
 printError = ioError . userError
@@ -88,6 +90,9 @@ handlePullRequest :: Remote -> [String] -> IO ()
 handlePullRequest remote params
   | ssc `isPrefixOf` "show" = getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
   | ssc `isPrefixOf` "list" = do
+      let (parsed, _, _) = getOpt RequireOrder pullRequestListOptions rest
+          PullRequestListOptions { prOptAll = showAll } =
+            foldl (flip id) defaultPullRequestListOptions parsed
       prs <- listPullRequests remote showAll
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
   | ssc `isPrefixOf` "create" = do
@@ -97,8 +102,6 @@ handlePullRequest remote params
   | otherwise = printError $ "Command " ++ ssc ++ " not supported"
     where ssc = head params
           rest = tail params
-          (parsed, _, _) = getOpt RequireOrder pullRequestOptions rest
-          PullRequestOptions { prOptAll = showAll } = foldl (flip id) defaultPullRequestOptions parsed
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
 handleAuth remote creds credFP = do
