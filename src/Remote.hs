@@ -53,8 +53,12 @@ open remote file = do
     Just ri -> openUrl $ browserPath ri remote branch file
     Nothing -> P.error "Could not identify repo info."
 
-browserPath :: RepoInfo -> Remote -> Branch -> Maybe String -> String
-browserPath ri (GitHub _) br Nothing = printf "https://github.com/%s/%s/tree/%s" (organization ri) (repository ri) br
-browserPath ri (GitHub _) br (Just file) = printf "https://github.com/%s/%s/blob/%s/%s" (organization ri) (repository ri) br file
-browserPath ri (Bitbucket _) br Nothing = printf "https://bitbucket.org/%s/%s/src/%s" (organization ri) (repository ri) br
-browserPath ri (Bitbucket _) br (Just file) = printf "https://bitbucket.org/%s/%s/src/%s/%s" (organization ri) (repository ri) br file
+browserPath :: RepoInfo -> Remote -> Branch -> Maybe FilePath -> String
+browserPath ri remote br mFP =
+  case (remote, mFP) of
+    (GitHub _, Nothing)    -> printf "https://github.com/%s/%s/tree/%s" org rep br
+    (GitHub _, Just fp)    -> printf "https://github.com/%s/%s/blob/%s/%s" org rep br fp
+    (Bitbucket _, Nothing) -> printf "https://bitbucket.org/%s/%s/src/%s" org rep br
+    (Bitbucket _, Just fp) -> printf "https://bitbucket.org/%s/%s/src/%s/%s" org rep br fp
+  where org = organization ri
+        rep = repository ri
