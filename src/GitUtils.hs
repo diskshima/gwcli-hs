@@ -1,6 +1,7 @@
 module GitUtils
   (
-    RepoInfo(..)
+    Branch
+  , RepoInfo(..)
   , repoInfoFromRepo
   , getRemoteUrl
   , getCurrentBranch
