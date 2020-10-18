@@ -5,7 +5,9 @@ module Remote where
 
 import           BitbucketApi      as BB
 import           GitHubApi         as GH
-import           GitUtils          (RepoInfo (..), repoInfoFromRepo)
+import           GitUtils          (RepoInfo (..), getCurrentBranch,
+                                    repoInfoFromRepo)
+import           Data.Maybe        (fromMaybe)
 import           Opener            (openUrl)
 import           Prelude           as P
 import           RemoteTypes       (Remote (..))
@@ -42,13 +44,17 @@ createPullRequest :: Remote -> PR.PullRequest -> IO PR.PullRequest
 createPullRequest (GitHub token)    = GH.createPullRequest token
 createPullRequest (Bitbucket token) = BB.createPullRequest token
 
-open :: Remote -> IO ()
-open remote = do
+open :: Remote -> Maybe String -> IO ()
+open remote file = do
   maybeRi <- repoInfoFromRepo
+  maybeBranch <- getCurrentBranch
+  let branch = fromMaybe "master" maybeBranch
   case maybeRi of
-    Just ri -> openUrl $ browserPath ri remote
+    Just ri -> openUrl $ browserPath ri remote branch file
     Nothing -> P.error "Could not identify repo info."
 
-browserPath :: RepoInfo -> Remote -> String
-browserPath ri (GitHub _) = printf "https://github.com/%s/%s" (organization ri) (repository ri)
-browserPath ri (Bitbucket _) = printf "https://bitbucket.org/%s/%s" (organization ri) (repository ri)
+browserPath :: RepoInfo -> Remote -> String -> Maybe String -> String
+browserPath ri (GitHub _) br Nothing = printf "https://github.com/%s/%s/tree/%s" (organization ri) (repository ri) br
+browserPath ri (GitHub _) br (Just file) = printf "https://github.com/%s/%s/blob/%s/%s" (organization ri) (repository ri) br file
+browserPath ri (Bitbucket _) br Nothing = printf "https://bitbucket.org/%s/%s/src/%s" (organization ri) (repository ri) br
+browserPath ri (Bitbucket _) br (Just file) = printf "https://bitbucket.org/%s/%s/src/%s/%s" (organization ri) (repository ri) br file
