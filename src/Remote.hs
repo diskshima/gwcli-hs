@@ -5,7 +5,7 @@ module Remote where
 
 import           BitbucketApi      as BB
 import           GitHubApi         as GH
-import           GitUtils          (RepoInfo (..), getCurrentBranch,
+import           GitUtils          (Branch, RepoInfo (..), getCurrentBranch,
                                     repoInfoFromRepo)
 import           Data.Maybe        (fromMaybe)
 import           Opener            (openUrl)
@@ -53,7 +53,7 @@ open remote file = do
     Just ri -> openUrl $ browserPath ri remote branch file
     Nothing -> P.error "Could not identify repo info."
 
-browserPath :: RepoInfo -> Remote -> String -> Maybe String -> String
+browserPath :: RepoInfo -> Remote -> Branch -> Maybe String -> String
 browserPath ri (GitHub _) br Nothing = printf "https://github.com/%s/%s/tree/%s" (organization ri) (repository ri) br
 browserPath ri (GitHub _) br (Just file) = printf "https://github.com/%s/%s/blob/%s/%s" (organization ri) (repository ri) br file
 browserPath ri (Bitbucket _) br Nothing = printf "https://bitbucket.org/%s/%s/src/%s" (organization ri) (repository ri) br
