@@ -23,3 +23,8 @@ jobs:
       uses: mstksg/setup-stack@v2
     - name: Run build
       run: stack build
+    - name: Upload binary
+      uses: actions/upload-artifact@v2
+      with:
+        name: gwcli
+        path: ~/.local/bin/gwcli
