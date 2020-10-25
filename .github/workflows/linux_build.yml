@@ -12,6 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Cache Stack files
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.stack/
+          .stack-work/
+        key: ${{ runner.os }}-${{ hashFiles('stack.yaml.lock') }}
     - name: Setup Stack
       uses: mstksg/setup-stack@v2
     - name: Run build
