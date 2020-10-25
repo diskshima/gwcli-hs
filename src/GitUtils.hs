@@ -24,10 +24,7 @@ type Branch = String
 
 repoInfoFromRepo :: IO (Maybe RepoInfo)
 repoInfoFromRepo = do
-  maybeUrl <- getRemoteUrl
-  return $ case maybeUrl of
-             Just uri -> urlToRepoInfo uri
-             Nothing  -> Nothing
+  maybe Nothing urlToRepoInfo <$> getRemoteUrl
 
 getCurrentBranch :: IO (Maybe Branch)
 getCurrentBranch = either (const Nothing) (Just . refNameRaw) <$> withCurrentRepo headGet
