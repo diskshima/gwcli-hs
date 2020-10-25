@@ -23,8 +23,11 @@ jobs:
       uses: mstksg/setup-stack@v2
     - name: Run build
       run: stack build
+    - name: Output Stack local bin directory
+      id: output_stack
+      run: echo "::set-output name=local_bin::$(stack path --local-bin)"
     - name: Upload binary
       uses: actions/upload-artifact@v2
       with:
         name: gwcli
-        path: ~/.local/bin/gwcli
+        path: ${{ steps.output_stack.outputs.local_bin }}/gwcli
