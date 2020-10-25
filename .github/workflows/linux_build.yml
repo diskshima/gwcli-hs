@@ -21,8 +21,8 @@ jobs:
         key: ${{ runner.os }}-${{ hashFiles('stack.yaml.lock') }}
     - name: Setup Stack
       uses: mstksg/setup-stack@v2
-    - name: Run build
-      run: stack build
+    - name: stack install
+      run: stack install
     - name: Output Stack local bin directory
       id: output_stack
       run: echo "::set-output name=local_bin::$(stack path --local-bin)"
