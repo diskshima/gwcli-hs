@@ -4,10 +4,10 @@
 module Remote where
 
 import           BitbucketApi      as BB
+import           Data.Maybe        (fromMaybe)
 import           GitHubApi         as GH
 import           GitUtils          (Branch, RepoInfo (..), getCurrentBranch,
                                     repoInfoFromRepo)
-import           Data.Maybe        (fromMaybe)
 import           Opener            (openUrl)
 import           Prelude           as P
 import           RemoteTypes       (Remote (..))
