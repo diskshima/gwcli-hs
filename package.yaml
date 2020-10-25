@@ -1,10 +1,10 @@
 name:                gwcli
-version:             0.2.0.0
+version:             0.4.0.0
 github:              "diskshima/gwcli-hs"
-license:             BSD3
+license:             MIT
 author:              "Daisuke Shimamoto"
 maintainer:          "diskshima@gmail.com"
-copyright:           "2019 Daisuke Shimamoto"
+copyright:           "2020 Daisuke Shimamoto"
 
 extra-source-files:
 - README.md
