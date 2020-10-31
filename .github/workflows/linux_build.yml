@@ -8,8 +8,11 @@ on:
 
 jobs:
   build:
-    name: Linux Build
-    runs-on: ubuntu-latest
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
     steps:
     - uses: actions/checkout@v2
     - name: Cache Stack files
@@ -26,8 +29,15 @@ jobs:
     - name: Output Stack local bin directory
       id: output_stack
       run: echo "::set-output name=local_bin::$(stack path --local-bin)"
-    - name: Upload binary
+    - name: Upload binary (macOS)
+      if: ${{ matrix.os == 'macos-latest' }}
       uses: actions/upload-artifact@v2
       with:
-        name: gwcli
+        name: gwcli_macos
+        path: ${{ steps.output_stack.outputs.local_bin }}/gwcli
+    - name: Upload binary (Ubuntu)
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: gwcli_ubuntu
         path: ${{ steps.output_stack.outputs.local_bin }}/gwcli
