@@ -6,11 +6,11 @@ module Main where
 import           CredentialUtils       (Credentials (..), credFilePath,
                                         readCredential, writeCredential)
 import           Data.List             (isInfixOf, isPrefixOf)
-import           Data.Maybe            (listToMaybe)
-import           GitUtils              (getCurrentBranch, getRemoteUrl)
+import           Data.Maybe            (fromMaybe, listToMaybe)
+import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl)
 import           ListUtils             (formatEachAndJoin)
 import           Remote                (authenticate, createIssue,
-                                        createPullRequest, getIssue,
+                                        createPullRequest, defaultBranch, getIssue,
                                         getPullRequest, listIssues,
                                         listPullRequests, open)
 import           RemoteTypes           (Remote (..))
@@ -73,9 +73,9 @@ pullRequestListOptions =
 data PullRequestCreateOptions =
   PullRequestCreateOptions { prcoBase :: String , prcoTitle :: String, prcoBody :: String }
 
-defaultPullRequestCreateOptions :: PullRequestCreateOptions
-defaultPullRequestCreateOptions =
-  PullRequestCreateOptions { prcoBase = "master" , prcoTitle = "", prcoBody = "" }
+defaultPullRequestCreateOptions :: Branch -> PullRequestCreateOptions
+defaultPullRequestCreateOptions baseBranch =
+  PullRequestCreateOptions { prcoBase = baseBranch, prcoTitle = "", prcoBody = "" }
 
 pullRequestCreateOptions :: [OptDescr (PullRequestCreateOptions -> PullRequestCreateOptions)]
 pullRequestCreateOptions =
@@ -134,8 +134,9 @@ handlePullRequest remote params
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
   | ssc `isPrefixOf` "create" = do
       let (parsed, _, _) = getOpt RequireOrder pullRequestCreateOptions rest
-          cParams = foldl (flip id) defaultPullRequestCreateOptions parsed
-      pr <- paramsToPullRequest cParams
+      remoteBase <- defaultBranch remote
+      let baseBranch = fromMaybe "master" remoteBase
+      pr <- paramsToPullRequest $ foldl (flip id) (defaultPullRequestCreateOptions baseBranch) parsed
       response <- createPullRequest remote pr
       putStrLn $ PR.formatPullRequest response
   | otherwise = printError $ "Command " ++ ssc ++ " not supported"

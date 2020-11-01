@@ -6,6 +6,7 @@ module GitHubApi
   (
     createIssue
   , createPullRequest
+  , getDefaultBranch
   , getIssue
   , getPullRequest
   , listIssues
@@ -23,7 +24,7 @@ import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as U8
 import           Data.Function          ((&))
 import           GHC.Generics
-import           GitUtils               (RepoInfo (..), repoInfoFromRepo)
+import           GitUtils               (Branch, RepoInfo (..), repoInfoFromRepo)
 import           JsonUtils              (decodeResponse, decodeResponseAsList)
 import           Network.HTTP.Types.URI (renderQuery)
 import           Network.Wreq           (Options, Response, defaults, getWith,
@@ -35,6 +36,13 @@ import           Text.Printf            (printf)
 import qualified Types.Issue            as I
 import qualified Types.PullRequest      as PR
 import           WebUtils               (ParamList, Token, toParamList)
+
+data RepoGet = RepoGet
+  { repogetDefaultBranch :: String
+  } deriving (Show, Generic)
+
+instance FromJSON RepoGet where
+  parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
 data IssueGet = IssueGet
   { issuegetNumber  :: Integer
@@ -96,6 +104,15 @@ listPullRequests token = runListQuery token "/pulls" responseToPullRequest
 createPullRequest :: Token -> PR.PullRequest -> IO PR.PullRequest
 createPullRequest token item = responseToPullRequest <$> runCreate token "/pulls" param
   where param = prToPullRequestPost item
+
+getDefaultBranch :: Token -> IO (Maybe Branch)
+getDefaultBranch token = do
+  maybeUrl <- buildUrl "" Nothing
+  case maybeUrl of
+    Just url -> do
+      response <- getGitHub token url
+      extractBranch response
+    Nothing -> return Nothing
 
 reposPath :: RepoInfo -> String
 reposPath ri = printf "/repos/%s/%s" (organization ri) (repository ri)
@@ -176,3 +193,9 @@ runCreate token suffix param = do
         Just item -> return item
         Nothing   -> P.error "Failed to parse response."
     Nothing -> P.error "Could not identify remote URL."
+
+extractBranch :: Response BL.ByteString -> IO (Maybe Branch)
+extractBranch response =
+  case decodeResponse response of
+    Just item -> return (Just $ repogetDefaultBranch item)
+    Nothing -> return Nothing
