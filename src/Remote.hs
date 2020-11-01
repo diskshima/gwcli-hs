@@ -44,6 +44,10 @@ createPullRequest :: Remote -> PR.PullRequest -> IO PR.PullRequest
 createPullRequest (GitHub token)    = GH.createPullRequest token
 createPullRequest (Bitbucket token) = BB.createPullRequest token
 
+defaultBranch :: Remote -> IO (Maybe Branch)
+defaultBranch (GitHub token) = GH.getDefaultBranch token
+defaultBranch (Bitbucket _) = return Nothing
+
 open :: Remote -> Maybe String -> IO ()
 open remote file = do
   maybeRi <- repoInfoFromRepo
