@@ -22,8 +22,6 @@ jobs:
           ~/.stack/
           .stack-work/
         key: ${{ runner.os }}-${{ hashFiles('stack.yaml.lock') }}
-    - name: Debugging with tmate
-      uses: mxschmitt/action-tmate@v3
     - name: stack install
       run: stack install
     - name: Output Stack local bin directory
