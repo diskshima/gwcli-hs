@@ -5,13 +5,12 @@ module GitUtils
   , repoInfoFromRepo
   , getRemoteUrl
   , getCurrentBranch
-  , listBranches
-  , listRemotes
+  , listRemoteBranches
   ) where
 
 import           Data.Git            (refNameRaw)
 import           Data.Git.Named      (looseRemotesList)
-import           Data.Git.Repository (branchList, configGet, headGet)
+import           Data.Git.Repository (configGet, headGet)
 import           Data.Git.Storage    (findRepoMaybe, openRepo, withCurrentRepo)
 import           Data.List           (isPrefixOf, isSuffixOf)
 import           Data.String.Utils   (replace)
@@ -63,17 +62,14 @@ urlToRepoInfo url = do
   uri <- parseURI $ toFullSshUrl url
   return $ (segmentsToRepoInfo . pathSegments) uri
 
-listBranches = do
+listRemoteBranches :: IO [Branch]
+listRemoteBranches = do
   maybePath <- findRepoMaybe
   case maybePath of
     Just path -> do
-      repo <- openRepo path
-      branchList repo
-    Nothing   -> Prelude.error "aaaa"
-
-listRemotes = do
-  maybePath <- findRepoMaybe
-  case maybePath of
-    Just path -> do
-      looseRemotesList path
-    Nothing   -> Prelude.error "aaaa"
+      refs <- looseRemotesList path
+      let rawRefs = refNameRaw <$> refs
+          branches = fmap dropRemote rawRefs
+      return branches
+    Nothing   -> return []
+  where dropRemote s = drop 1 $ dropWhile (/= '/') s
