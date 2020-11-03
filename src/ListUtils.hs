@@ -1,11 +1,12 @@
 module ListUtils
   (
-    formatEachAndJoin,
-    nthOrDefault,
-    nthOrNothing
+    firstMatching
+  , formatEachAndJoin
+  , nthOrDefault
+  , nthOrNothing
   ) where
 
-import           Data.List  (intercalate)
+import           Data.List  (find, intercalate)
 import           Data.Maybe (fromMaybe)
 
 nthOrDefault :: [a] -> a -> Integer -> a
@@ -23,3 +24,7 @@ nthOrNothingInner (x: xs) index curIndex =
 
 formatEachAndJoin :: [a] -> (a -> String) -> String
 formatEachAndJoin list formatter = intercalate "\n" $ fmap formatter list
+
+firstMatching :: Eq a => [a] -> [a] -> Maybe a
+firstMatching items = find matches
+  where matches candidate = candidate `elem` items

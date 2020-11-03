@@ -7,8 +7,9 @@ import           CredentialUtils       (Credentials (..), credFilePath,
                                         readCredential, writeCredential)
 import           Data.List             (isInfixOf, isPrefixOf)
 import           Data.Maybe            (fromMaybe, listToMaybe)
-import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl)
-import           ListUtils             (formatEachAndJoin)
+import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl,
+                                        listRemoteBranches)
+import           ListUtils             (firstMatching, formatEachAndJoin)
 import           Remote                (authenticate, createIssue,
                                         createPullRequest, defaultBranch, getIssue,
                                         getPullRequest, listIssues,
@@ -90,6 +91,9 @@ pullRequestCreateOptions =
       "Pull request message (body)"
   ]
 
+candidateBaseBranches :: [Branch]
+candidateBaseBranches = ["develop", "main", "master"]
+
 printError :: String -> IO ()
 printError = ioError . userError
 
@@ -134,14 +138,22 @@ handlePullRequest remote params
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
   | ssc `isPrefixOf` "create" = do
       let (parsed, _, _) = getOpt RequireOrder pullRequestCreateOptions rest
-      remoteBase <- defaultBranch remote
-      let baseBranch = fromMaybe "master" remoteBase
+      baseBranch <- determineBaseBranch remote
       pr <- paramsToPullRequest $ foldl (flip id) (defaultPullRequestCreateOptions baseBranch) parsed
       response <- createPullRequest remote pr
       putStrLn $ PR.formatPullRequest response
   | otherwise = printError $ "Command " ++ ssc ++ " not supported"
     where ssc = head params
           rest = tail params
+
+determineBaseBranch :: Remote -> IO Branch
+determineBaseBranch remote = do
+  remoteBase <- defaultBranch remote
+  case remoteBase of
+    Just base -> return base
+    Nothing -> do
+      remoteBranches <- listRemoteBranches
+      return $ fromMaybe "master" (firstMatching remoteBranches candidateBaseBranches)
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
 handleAuth remote creds credFP = do
