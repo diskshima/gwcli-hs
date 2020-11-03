@@ -5,10 +5,13 @@ module GitUtils
   , repoInfoFromRepo
   , getRemoteUrl
   , getCurrentBranch
+  , listBranches
+  , listRemotes
   ) where
 
 import           Data.Git            (refNameRaw)
-import           Data.Git.Repository (configGet, headGet)
+import           Data.Git.Named      (looseRemotesList)
+import           Data.Git.Repository (branchList, configGet, headGet)
 import           Data.Git.Storage    (findRepoMaybe, openRepo, withCurrentRepo)
 import           Data.List           (isPrefixOf, isSuffixOf)
 import           Data.String.Utils   (replace)
@@ -59,3 +62,18 @@ urlToRepoInfo :: String -> Maybe RepoInfo
 urlToRepoInfo url = do
   uri <- parseURI $ toFullSshUrl url
   return $ (segmentsToRepoInfo . pathSegments) uri
+
+listBranches = do
+  maybePath <- findRepoMaybe
+  case maybePath of
+    Just path -> do
+      repo <- openRepo path
+      branchList repo
+    Nothing   -> Prelude.error "aaaa"
+
+listRemotes = do
+  maybePath <- findRepoMaybe
+  case maybePath of
+    Just path -> do
+      looseRemotesList path
+    Nothing   -> Prelude.error "aaaa"
