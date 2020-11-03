@@ -91,6 +91,9 @@ pullRequestCreateOptions =
       "Pull request message (body)"
   ]
 
+candidateBaseBranches :: [Branch]
+candidateBaseBranches = ["develop", "main", "master"]
+
 printError :: String -> IO ()
 printError = ioError . userError
 
@@ -135,8 +138,7 @@ handlePullRequest remote params
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
   | ssc `isPrefixOf` "create" = do
       let (parsed, _, _) = getOpt RequireOrder pullRequestCreateOptions rest
-      remoteBase <- defaultBranch remote
-      let baseBranch = fromMaybe "master" remoteBase
+      baseBranch <- determineBaseBranch remote
       pr <- paramsToPullRequest $ foldl (flip id) (defaultPullRequestCreateOptions baseBranch) parsed
       response <- createPullRequest remote pr
       putStrLn $ PR.formatPullRequest response
@@ -151,7 +153,7 @@ determineBaseBranch remote = do
     Just base -> return base
     Nothing -> do
       remoteBranches <- listRemoteBranches
-      return $ fromMaybe "master" (firstMatching remoteBranches ["develop", "main", "master"])
+      return $ fromMaybe "master" (firstMatching remoteBranches candidateBaseBranches)
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
 handleAuth remote creds credFP = do
