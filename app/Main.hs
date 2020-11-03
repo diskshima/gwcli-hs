@@ -7,8 +7,9 @@ import           CredentialUtils       (Credentials (..), credFilePath,
                                         readCredential, writeCredential)
 import           Data.List             (isInfixOf, isPrefixOf)
 import           Data.Maybe            (fromMaybe, listToMaybe)
-import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl)
-import           ListUtils             (formatEachAndJoin)
+import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl,
+                                        listRemoteBranches)
+import           ListUtils             (firstMatching, formatEachAndJoin)
 import           Remote                (authenticate, createIssue,
                                         createPullRequest, defaultBranch, getIssue,
                                         getPullRequest, listIssues,
@@ -142,6 +143,15 @@ handlePullRequest remote params
   | otherwise = printError $ "Command " ++ ssc ++ " not supported"
     where ssc = head params
           rest = tail params
+
+determineBaseBranch :: Remote -> IO Branch
+determineBaseBranch remote = do
+  remoteBase <- defaultBranch remote
+  case remoteBase of
+    Just base -> return base
+    Nothing -> do
+      remoteBranches <- listRemoteBranches
+      return $ fromMaybe "master" (firstMatching remoteBranches ["develop", "main", "master"])
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
 handleAuth remote creds credFP = do
