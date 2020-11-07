@@ -1,13 +1,11 @@
 module GitUtils
   (
     Branch
-  , Message
   , RepoInfo(..)
   , repoInfoFromRepo
   , getRemoteUrl
   , getCurrentBranch
   , listRemoteBranches
-  , parseMessage
   ) where
 
 import           Data.Git            (refNameRaw)
@@ -22,11 +20,6 @@ import           Text.Printf         (printf)
 data RepoInfo = RepoInfo {
   organization :: String,
   repository   :: String
-} deriving (Show)
-
-data Message = Message {
-  title :: String,
-  body  :: String
 } deriving (Show)
 
 type Branch = String
@@ -80,13 +73,3 @@ listRemoteBranches = do
       return branches
     Nothing   -> return []
   where dropRemote s = drop 1 $ dropWhile (/= '/') s
-
-parseMessage :: String -> Message
-parseMessage str = parseMessageInner str [] Nothing
-
-parseMessageInner :: String -> String -> Maybe Char -> Message
-parseMessageInner (x:xs) _ Nothing = parseMessageInner xs [] (Just x)
-parseMessageInner (x:xs) acc (Just prev)
-  | prev == '\n' && x == '\n' = Message acc xs
-  | otherwise = parseMessageInner xs (acc ++ [prev]) (Just x)
-parseMessageInner s _ _ = Message s ""
