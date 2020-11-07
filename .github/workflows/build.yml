@@ -20,6 +20,7 @@ jobs:
       with:
         path: |
           .stack-work/
+          ~/.stack/
         key: ${{ runner.os }}-${{ hashFiles('stack.yaml.lock') }}
     - name: stack install
       run: stack install
