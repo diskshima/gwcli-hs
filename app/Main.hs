@@ -10,17 +10,20 @@ import           Data.Maybe            (fromMaybe, listToMaybe)
 import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl,
                                         listRemoteBranches)
 import           ListUtils             (firstMatching, formatEachAndJoin)
+import           Opener                (openEditorWithTempFile)
 import           Remote                (authenticate, createIssue,
-                                        createPullRequest, defaultBranch, getIssue,
-                                        getPullRequest, listIssues,
-                                        listPullRequests, open)
+                                        createPullRequest, defaultBranch,
+                                        getIssue, getPullRequest, listIssues,
+                                        listPullRequests, open, parseMessage)
 import           RemoteTypes           (Remote (..))
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
+import           System.Directory      (removeFile)
 import           System.Environment    (getArgs)
 import           Text.RawString.QQ
 import qualified Types.Issue           as I
 import qualified Types.PullRequest     as PR
+import qualified RemoteTypes     as R
 import           WebUtils              as WU
 
 data Flag = Help | Verbose | Version
@@ -58,6 +61,14 @@ issueCreateOptions =
       (ReqArg (\msg opts -> opts { iscoBody = msg }) "BODY")
       "Issue message (body)"
   ]
+
+issueFromEditor :: IO IssueCreateOptions
+issueFromEditor = do
+  fp <- openEditorWithTempFile
+  content <- readFile fp
+  removeFile fp
+  let msg = parseMessage content
+  return IssueCreateOptions { iscoTitle = R.title msg, iscoBody = R.body msg }
 
 newtype PullRequestListOptions = PullRequestListOptions { prOptAll :: Bool }
 
@@ -120,7 +131,9 @@ handleIssue remote params
     putStrLn $ formatEachAndJoin issues I.formatIssue
   | ssc `isPrefixOf` "create" = do
       let (parsed, _, _) = getOpt RequireOrder issueCreateOptions rest
-          cParams = foldl (flip id) defaultIssueCreateOptions parsed
+      cParams <- case parsed of
+                   [] -> issueFromEditor
+                   _  -> return $ foldl (flip id) defaultIssueCreateOptions parsed
       response <- createIssue remote (paramsToIssue cParams)
       putStrLn $ I.formatIssue response
   | otherwise = printError $ "Subcommand " ++ ssc ++ " not supported"
