@@ -37,7 +37,7 @@ import qualified Types.Issue            as I
 import qualified Types.PullRequest      as PR
 import           WebUtils               (ParamList, Token, toParamList)
 
-data RepoGet = RepoGet
+newtype RepoGet = RepoGet
   { repogetDefaultBranch :: String
   } deriving (Show, Generic)
 
