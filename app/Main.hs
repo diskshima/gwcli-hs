@@ -10,17 +10,20 @@ import           Data.Maybe            (fromMaybe, listToMaybe)
 import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl,
                                         listRemoteBranches)
 import           ListUtils             (firstMatching, formatEachAndJoin)
+import           Opener                (openEditorWithTempFile)
 import           Remote                (authenticate, createIssue,
-                                        createPullRequest, defaultBranch, getIssue,
-                                        getPullRequest, listIssues,
-                                        listPullRequests, open)
+                                        createPullRequest, defaultBranch,
+                                        getIssue, getPullRequest, listIssues,
+                                        listPullRequests, open, parseMessage)
 import           RemoteTypes           (Remote (..))
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
+import           System.Directory      (removeFile)
 import           System.Environment    (getArgs)
 import           Text.RawString.QQ
 import qualified Types.Issue           as I
 import qualified Types.PullRequest     as PR
+import qualified RemoteTypes     as R
 import           WebUtils              as WU
 
 data Flag = Help | Verbose | Version
@@ -59,6 +62,14 @@ issueCreateOptions =
       "Issue message (body)"
   ]
 
+issueFromEditor :: IO IssueCreateOptions
+issueFromEditor = do
+  fp <- openEditorWithTempFile
+  content <- readFile fp
+  removeFile fp
+  let msg = parseMessage content
+  return IssueCreateOptions { iscoTitle = R.title msg, iscoBody = R.body msg }
+
 newtype PullRequestListOptions = PullRequestListOptions { prOptAll :: Bool }
 
 defaultPullRequestListOptions :: PullRequestListOptions
@@ -74,9 +85,9 @@ pullRequestListOptions =
 data PullRequestCreateOptions =
   PullRequestCreateOptions { prcoBase :: String , prcoTitle :: String, prcoBody :: String }
 
-defaultPullRequestCreateOptions :: Branch -> PullRequestCreateOptions
-defaultPullRequestCreateOptions baseBranch =
-  PullRequestCreateOptions { prcoBase = baseBranch, prcoTitle = "", prcoBody = "" }
+defaultPullRequestCreateOptions :: PullRequestCreateOptions
+defaultPullRequestCreateOptions =
+  PullRequestCreateOptions { prcoBase = "", prcoTitle = "", prcoBody = "" }
 
 pullRequestCreateOptions :: [OptDescr (PullRequestCreateOptions -> PullRequestCreateOptions)]
 pullRequestCreateOptions =
@@ -120,12 +131,20 @@ handleIssue remote params
     putStrLn $ formatEachAndJoin issues I.formatIssue
   | ssc `isPrefixOf` "create" = do
       let (parsed, _, _) = getOpt RequireOrder issueCreateOptions rest
-          cParams = foldl (flip id) defaultIssueCreateOptions parsed
+      cParams <- case parsed of
+                   [] -> issueFromEditor
+                   _  -> return $ foldl (flip id) defaultIssueCreateOptions parsed
       response <- createIssue remote (paramsToIssue cParams)
       putStrLn $ I.formatIssue response
   | otherwise = printError $ "Subcommand " ++ ssc ++ " not supported"
     where ssc = head params
           rest = tail params
+
+populateMissingPrco :: PullRequestCreateOptions -> Remote -> IO PullRequestCreateOptions
+populateMissingPrco PullRequestCreateOptions{ prcoBase=base, prcoTitle=title, prcoBody=body } remote = do
+  newBase <- determineBaseBranch remote base
+  R.Message{ R.title=newTitle, R.body=newBody } <- determinePRBody title body
+  return $ PullRequestCreateOptions { prcoBase=newBase, prcoTitle=newTitle, prcoBody=newBody }
 
 handlePullRequest :: Remote -> [String] -> IO ()
 handlePullRequest remote params
@@ -138,22 +157,32 @@ handlePullRequest remote params
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
   | ssc `isPrefixOf` "create" = do
       let (parsed, _, _) = getOpt RequireOrder pullRequestCreateOptions rest
-      baseBranch <- determineBaseBranch remote
-      pr <- paramsToPullRequest $ foldl (flip id) (defaultPullRequestCreateOptions baseBranch) parsed
+      let tmpPrco = foldl (flip id) defaultPullRequestCreateOptions parsed
+      prco <- populateMissingPrco tmpPrco remote
+      pr <- paramsToPullRequest prco
       response <- createPullRequest remote pr
       putStrLn $ PR.formatPullRequest response
   | otherwise = printError $ "Command " ++ ssc ++ " not supported"
     where ssc = head params
           rest = tail params
 
-determineBaseBranch :: Remote -> IO Branch
-determineBaseBranch remote = do
+determineBaseBranch :: Remote -> String -> IO Branch
+determineBaseBranch remote "" = do
   remoteBase <- defaultBranch remote
   case remoteBase of
     Just base -> return base
     Nothing -> do
       remoteBranches <- listRemoteBranches
       return $ fromMaybe "master" (firstMatching remoteBranches candidateBaseBranches)
+determineBaseBranch _ specifiedBranch = return specifiedBranch
+
+determinePRBody :: String -> String -> IO R.Message
+determinePRBody "" _ = do
+  fp <- openEditorWithTempFile
+  content <- readFile fp
+  removeFile fp
+  return $ parseMessage content
+determinePRBody title body = return $ R.Message title body
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
 handleAuth remote creds credFP = do

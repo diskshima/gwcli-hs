@@ -11,6 +11,7 @@ import           GitUtils          (Branch, RepoInfo (..), getCurrentBranch,
 import           Opener            (openUrl)
 import           Prelude           as P
 import           RemoteTypes       (Remote (..))
+import qualified RemoteTypes       as R
 import           Text.Printf       (printf)
 import qualified Types.Issue       as I
 import qualified Types.PullRequest as PR
@@ -46,7 +47,7 @@ createPullRequest (Bitbucket token) = BB.createPullRequest token
 
 defaultBranch :: Remote -> IO (Maybe Branch)
 defaultBranch (GitHub token) = GH.getDefaultBranch token
-defaultBranch (Bitbucket _) = return Nothing
+defaultBranch (Bitbucket _)  = return Nothing
 
 open :: Remote -> Maybe String -> IO ()
 open remote file = do
@@ -66,3 +67,13 @@ browserPath ri remote br mFP =
     (Bitbucket _, Just fp) -> printf "https://bitbucket.org/%s/%s/src/%s/%s" org rep br fp
   where org = organization ri
         rep = repository ri
+
+parseMessage :: String -> R.Message
+parseMessage str = parseMessageInner str [] Nothing
+
+parseMessageInner :: String -> String -> Maybe Char -> R.Message
+parseMessageInner (x:xs) _ Nothing = parseMessageInner xs [] (Just x)
+parseMessageInner (x:xs) acc (Just prev)
+  | prev == '\n' && x == '\n' = R.Message acc xs
+  | otherwise = parseMessageInner xs (acc ++ [prev]) (Just x)
+parseMessageInner s _ _ = R.Message s ""

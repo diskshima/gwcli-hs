@@ -38,7 +38,9 @@ dependencies:
 - process
 - raw-strings-qq
 - string-conversions
+- temporary
 - text
+- typed-process
 - uri-bytestring
 - utf8-string
 - wreq
