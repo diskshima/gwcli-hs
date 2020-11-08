@@ -85,9 +85,9 @@ pullRequestListOptions =
 data PullRequestCreateOptions =
   PullRequestCreateOptions { prcoBase :: String , prcoTitle :: String, prcoBody :: String }
 
-defaultPullRequestCreateOptions :: Branch -> PullRequestCreateOptions
-defaultPullRequestCreateOptions baseBranch =
-  PullRequestCreateOptions { prcoBase = baseBranch, prcoTitle = "", prcoBody = "" }
+defaultPullRequestCreateOptions :: PullRequestCreateOptions
+defaultPullRequestCreateOptions =
+  PullRequestCreateOptions { prcoBase = "", prcoTitle = "", prcoBody = "" }
 
 pullRequestCreateOptions :: [OptDescr (PullRequestCreateOptions -> PullRequestCreateOptions)]
 pullRequestCreateOptions =
@@ -140,6 +140,12 @@ handleIssue remote params
     where ssc = head params
           rest = tail params
 
+populateMissingPrco :: PullRequestCreateOptions -> Remote -> IO PullRequestCreateOptions
+populateMissingPrco PullRequestCreateOptions{ prcoBase=base, prcoTitle=title, prcoBody=body } remote = do
+  newBase <- determineBaseBranch remote base
+  R.Message{ R.title=newTitle, R.body=newBody } <- determinePRBody title body
+  return $ PullRequestCreateOptions { prcoBase=newBase, prcoTitle=newTitle, prcoBody=newBody }
+
 handlePullRequest :: Remote -> [String] -> IO ()
 handlePullRequest remote params
   | ssc `isPrefixOf` "show" = getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
@@ -151,22 +157,32 @@ handlePullRequest remote params
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
   | ssc `isPrefixOf` "create" = do
       let (parsed, _, _) = getOpt RequireOrder pullRequestCreateOptions rest
-      baseBranch <- determineBaseBranch remote
-      pr <- paramsToPullRequest $ foldl (flip id) (defaultPullRequestCreateOptions baseBranch) parsed
+      let tmpPrco = foldl (flip id) defaultPullRequestCreateOptions parsed
+      prco <- populateMissingPrco tmpPrco remote
+      pr <- paramsToPullRequest prco
       response <- createPullRequest remote pr
       putStrLn $ PR.formatPullRequest response
   | otherwise = printError $ "Command " ++ ssc ++ " not supported"
     where ssc = head params
           rest = tail params
 
-determineBaseBranch :: Remote -> IO Branch
-determineBaseBranch remote = do
+determineBaseBranch :: Remote -> String -> IO Branch
+determineBaseBranch remote "" = do
   remoteBase <- defaultBranch remote
   case remoteBase of
     Just base -> return base
     Nothing -> do
       remoteBranches <- listRemoteBranches
       return $ fromMaybe "master" (firstMatching remoteBranches candidateBaseBranches)
+determineBaseBranch _ specifiedBranch = return specifiedBranch
+
+determinePRBody :: String -> String -> IO R.Message
+determinePRBody "" _ = do
+  fp <- openEditorWithTempFile
+  content <- readFile fp
+  removeFile fp
+  return $ parseMessage content
+determinePRBody title body = return $ R.Message title body
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
 handleAuth remote creds credFP = do
