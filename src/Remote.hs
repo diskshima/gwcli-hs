@@ -75,5 +75,5 @@ parseMessageInner :: String -> String -> Maybe Char -> R.Message
 parseMessageInner (x:xs) _ Nothing = parseMessageInner xs [] (Just x)
 parseMessageInner (x:xs) acc (Just prev)
   | prev == '\n' && x == '\n' = R.Message acc xs
-  | otherwise = parseMessageInner xs (acc ++ [prev]) (Just x)
-parseMessageInner s _ _ = R.Message s ""
+  | otherwise                 = parseMessageInner xs (acc ++ [prev]) (Just x)
+parseMessageInner _ s _ = R.Message s ""
