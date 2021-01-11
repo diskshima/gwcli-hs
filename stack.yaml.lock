@@ -24,7 +24,7 @@ packages:
     hackage: patience-0.2.1.0
 snapshots:
 - completed:
-    size: 532172
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/18.yaml
-    sha256: 4f2a092c6f4869854e8d7435ab98ce5157c641022c3cbfc4c4614ff3db752e62
-  original: lts-16.18
+    size: 533053
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/28.yaml
+    sha256: a9c01d860ac8dfb3a1b6f7ec4a36dd9504a95392b89c99b0877da63fa36a8e97
+  original: lts-16.28
