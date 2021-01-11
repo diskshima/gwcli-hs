@@ -216,12 +216,32 @@ help
 isPullRequestSubCommand :: String -> Bool
 isPullRequestSubCommand cmd = isPrefixOf "pullrequest" cmd || cmd == "pr"
 
+newtype BrowseOptions = BrowseOptions { brOpenBrowser :: Bool }
+
+defaultBrowseOptions :: BrowseOptions
+defaultBrowseOptions = BrowseOptions { brOpenBrowser = True }
+
+browseOptions :: [OptDescr (BrowseOptions -> BrowseOptions)]
+browseOptions =
+  [ Option ['p']["print"]
+      (NoArg (\opts -> opts { brOpenBrowser = False }))
+      "Only print the URL (instead of opening browser)." ]
+
+handleBrowse :: Remote -> [FilePath] -> IO()
+handleBrowse remote params =
+  case getOpt RequireOrder browseOptions params of
+    (opts, rest, []) ->
+      open remote (listToMaybe rest) openBrowser
+        where BrowseOptions { brOpenBrowser = openBrowser } =
+                foldl (flip id) defaultBrowseOptions opts
+    (_, _, errs)  -> printError $ concat errs ++ "Invalid option."
+
 dispatchSubcommand :: [String] -> Remote -> Credentials -> FilePath -> IO ()
 dispatchSubcommand opts remote c credFP
   | sc `isPrefixOf` "auth"     = handleAuth remote c credFP
   | sc `isPrefixOf` "issue"    = handleIssue remote rest
   | isPullRequestSubCommand sc = handlePullRequest remote rest
-  | sc `isPrefixOf` "browse"   = open remote (listToMaybe rest)
+  | sc `isPrefixOf` "browse"   = handleBrowse remote rest
   | sc `isPrefixOf` "help"     = handleHelp
   | otherwise                  = printError "Please specify subcommand"
     where (sc : rest) = opts

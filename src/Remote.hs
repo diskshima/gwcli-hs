@@ -49,13 +49,18 @@ defaultBranch :: Remote -> IO (Maybe Branch)
 defaultBranch (GitHub token) = GH.getDefaultBranch token
 defaultBranch (Bitbucket _)  = return Nothing
 
-open :: Remote -> Maybe String -> IO ()
-open remote file = do
+type OpenBrowser = Bool
+
+open :: Remote -> Maybe String -> OpenBrowser -> IO ()
+open remote file openBrowser = do
   maybeRi <- repoInfoFromRepo
   maybeBranch <- getCurrentBranch
   let branch = fromMaybe "master" maybeBranch
   case maybeRi of
-    Just ri -> openUrl $ browserPath ri remote branch file
+    Just ri -> if openBrowser
+                  then openUrl url
+                  else putStrLn url
+      where url = browserPath ri remote branch file
     Nothing -> P.error "Could not identify repo info."
 
 browserPath :: RepoInfo -> Remote -> Branch -> Maybe FilePath -> String
