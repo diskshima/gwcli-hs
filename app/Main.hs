@@ -221,7 +221,7 @@ dispatchSubcommand opts remote c credFP
   | sc `isPrefixOf` "auth"     = handleAuth remote c credFP
   | sc `isPrefixOf` "issue"    = handleIssue remote rest
   | isPullRequestSubCommand sc = handlePullRequest remote rest
-  | sc `isPrefixOf` "browse"   = open remote (listToMaybe rest)
+  | sc `isPrefixOf` "browse"   = open remote (listToMaybe rest) True
   | sc `isPrefixOf` "help"     = handleHelp
   | otherwise                  = printError "Please specify subcommand"
     where (sc : rest) = opts
