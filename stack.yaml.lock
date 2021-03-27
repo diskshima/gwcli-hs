@@ -15,16 +15,9 @@ packages:
       sha256: 72f57e8e4df49e214c229110ac2e2447e29c6cffea4e42fd3b11e65ff28c633b
   original:
     url: https://github.com/kquick/hs-git/archive/fdb7973ff2c482124d7806906a24bdfc5b94b989.tar.gz
-- completed:
-    hackage: patience-0.2.1.0@sha256:8fb2a274090f2cdbb78c758408a8ed9f6d7a26a09d5621ab3afc9dfe01e2247f,1336
-    pantry-tree:
-      size: 368
-      sha256: 442fdb22fbd6d87d4f5d72ac3322285f7bb2237965b4393ec60036bf43d2a4c8
-  original:
-    hackage: patience-0.2.1.0
 snapshots:
 - completed:
-    size: 533053
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/28.yaml
-    sha256: a9c01d860ac8dfb3a1b6f7ec4a36dd9504a95392b89c99b0877da63fa36a8e97
-  original: lts-16.28
+    size: 565720
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/17/8.yaml
+    sha256: 76bf8992ff8dfe6eda9c02f81866138c2369344d5011ab39ae403457c4448b03
+  original: lts-17.8
