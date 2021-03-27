@@ -3,7 +3,6 @@ resolver: lts-17.8
 extra-deps:
 - github: kquick/hs-git
   commit: fdb7973ff2c482124d7806906a24bdfc5b94b989
-- patience-0.2.1.0
 
 # For LSP support
 packages:
