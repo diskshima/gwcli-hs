@@ -23,7 +23,7 @@ import           Data.Aeson                   (FromJSON (parseJSON),
                                                genericToJSON)
 import           Data.Aeson.Casing            (aesonPrefix, snakeCase)
 import qualified Data.ByteString.Lazy         as BL
-import           Data.ByteString.Lazy.Builder (toLazyByteString)
+import           Data.ByteString.Builder      (toLazyByteString)
 import           Data.ByteString.Lazy.Char8   as BL8
 import qualified Data.ByteString.UTF8         as U8
 import           Data.Function                ((&))

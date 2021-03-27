@@ -1,4 +1,4 @@
-resolver: lts-16.28
+resolver: lts-17.8
 
 extra-deps:
 - github: kquick/hs-git
