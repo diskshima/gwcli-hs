@@ -18,8 +18,7 @@ module GitHubApi
 
 import           Control.Lens.Operators ((.~), (^.))
 import           Data.Aeson             (FromJSON (parseJSON), ToJSON (toJSON),
-                                         genericParseJSON, genericToJSON)
-import           Data.Aeson.Casing      (aesonPrefix, snakeCase)
+                                         genericParseJSON)
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as U8
 import           Data.Function          ((&))
@@ -36,49 +35,18 @@ import           Text.Printf            (printf)
 import qualified Types.Issue            as I
 import qualified Types.PullRequest      as PR
 import           WebUtils               (ParamList, Token, toParamList)
+import           GitHub.Issue           as IG (IssueGet(..))
+import           GitHub.Issue           as IP (IssuePost(..))
+import           GitHub.PullRequest     as PRG (PullRequestGet(..))
+import           GitHub.PullRequest     as PRP (PullRequestPost(..))
+import           GitHub.Utils           (jsonOptions)
 
-data RepoGet = RepoGet
-  { repogetDefaultBranch :: String
+newtype RepoGet = RepoGet
+  { defaultBranch :: String
   } deriving (Show, Generic)
 
 instance FromJSON RepoGet where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-data IssueGet = IssueGet
-  { issuegetNumber  :: Integer
-  , issuegetHtmlUrl :: String
-  , issuegetTitle   :: String
-  } deriving (Show, Generic)
-
-instance FromJSON IssueGet where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-data IssuePost = IssuePost
-  { issuepostTitle :: String
-  , issuepostBody  :: Maybe String
-  } deriving (Show, Generic)
-
-instance ToJSON IssuePost where
-  toJSON = genericToJSON $ aesonPrefix snakeCase
-
-data PullRequestPost = PullRequestPost
-  { pullrequestpostTitle :: String
-  , pullrequestpostHead  :: String
-  , pullrequestpostBase  :: String
-  , pullrequestpostBody  :: Maybe String
-  } deriving (Show, Generic)
-
-instance ToJSON PullRequestPost where
-  toJSON = genericToJSON $ aesonPrefix snakeCase
-
-data PullRequestGet = PullRequestGet
-  { pullrequestgetNumber  :: Integer
-  , pullrequestgetHtmlUrl :: String
-  , pullrequestgetTitle   :: String
-  } deriving (Show, Generic)
-
-instance FromJSON PullRequestGet where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
+  parseJSON = genericParseJSON jsonOptions
 
 gitHubBaseUrl :: String
 gitHubBaseUrl = "https://api.github.com"
@@ -126,14 +94,19 @@ getGitHub token = getWith $ gitHubHeader token
 postGitHub :: Postable a => Token -> String -> a -> IO (Response BL.ByteString)
 postGitHub token = postWith $ gitHubHeader token
 
-responseToIssue :: IssueGet -> I.Issue
+responseToIssue :: IG.IssueGet -> I.Issue
 responseToIssue i =
-  I.Issue (Just . show $ issuegetNumber i) (issuegetTitle i) Nothing (Just $ issuegetHtmlUrl i)
+  I.Issue (Just . show $ IG.number i) (IG.title i) Nothing (Just $ IG.htmlUrl i)
 
 responseToPullRequest :: PullRequestGet -> PR.PullRequest
 responseToPullRequest pr =
-  PR.PullRequest (Just . show $ pullrequestgetNumber pr) (pullrequestgetTitle pr)
-                 "" "" Nothing (Just $ pullrequestgetHtmlUrl pr)
+  PR.PullRequest prNumber prTitle prSrcBranch prDestBranch prBody prUrl
+  where prNumber = Just . show $ PRG.number pr
+        prTitle = PRG.title pr
+        prSrcBranch = ""
+        prDestBranch = ""
+        prBody = Nothing
+        prUrl = Just $ PRG.htmlUrl pr
 
 readNextLink :: Response BL.ByteString -> U8.ByteString
 readNextLink resp = resp ^. responseLink "rel" "next" . linkURL
@@ -197,5 +170,5 @@ runCreate token suffix param = do
 extractBranch :: Response BL.ByteString -> IO (Maybe Branch)
 extractBranch response =
   case decodeResponse response of
-    Just item -> return (Just $ repogetDefaultBranch item)
+    Just item -> return (Just $ defaultBranch item)
     Nothing -> return Nothing
