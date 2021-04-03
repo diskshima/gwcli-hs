@@ -1,5 +1,5 @@
 name:                gwcli
-version:             0.6.1.0
+version:             0.7.1.0
 github:              "diskshima/gwcli-hs"
 license:             MIT
 author:              "Daisuke Shimamoto"
