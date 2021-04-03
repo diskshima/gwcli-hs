@@ -48,7 +48,7 @@ instance ToJSON PullRequestBranch where
   toJSON = genericToJSON jsonOptions
 
 newtype BranchDetails = BranchDetails
-  { branchName :: String
+  { name :: String
   } deriving (Show, Generic)
 
 instance FromJSON BranchDetails where
