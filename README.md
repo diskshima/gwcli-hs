@@ -36,19 +36,3 @@ You're good to go :smile:
 ```bash
 stack build
 ```
-
-## haskell-language-server Support
-
-`haskell-language-server` requires `hie.yaml` to be up-to-date to work, we recommend installing [implicit-hie](https://github.com/Avi-D-coder/implicit-hie) and updating it from the stack configuration.
-
-### Installation
-
-```bash
-stack install implicit-hie
-```
-
-### Running
-
-```bash
-gen-hie > hie.yaml
-```
