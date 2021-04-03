@@ -18,10 +18,7 @@ import           Control.Lens                 ((^.))
 import           Control.Lens.Operators       ((.~))
 import           CredentialUtils              (Credentials (..), credFilePath,
                                                readCredential, writeCredential)
-import           Data.Aeson                   (FromJSON (parseJSON),
-                                               ToJSON (..), genericParseJSON,
-                                               genericToJSON)
-import           Data.Aeson.Casing            (aesonPrefix, snakeCase)
+import           Data.Aeson                   (FromJSON, ToJSON(..))
 import qualified Data.ByteString.Lazy         as BL
 import           Data.ByteString.Builder      (toLazyByteString)
 import           Data.ByteString.Lazy.Char8   as BL8
@@ -30,7 +27,6 @@ import           Data.Function                ((&))
 import           Data.Maybe                   (fromMaybe)
 import           Data.String.Conversions      (convertString)
 import           Data.Text.Lazy               as TL
-import           GHC.Generics
 import           GitUtils                     (RepoInfo (..), repoInfoFromRepo)
 import           JsonUtils                    (decodeResponse,
                                                decodeResponseOrError)
@@ -51,126 +47,34 @@ import           WebUtils                     (ParamList, Token, Tokens (..),
                                                fetchOAuth2AccessToken,
                                                receiveWebRequest,
                                                refreshOAuth2AccessToken)
+import           Bitbucket.Issue              as BI (Issue(..), IssueContent(..),
+                                                     Issues(..))
+import           Bitbucket.Issue              as BIP (IssuePost(..))
+import           Bitbucket.PullRequest        as BP (BranchDetails(..), PullRequest(..),
+                                                     PullRequests(..),
+                                                     PullRequestBranch(..))
+import           Bitbucket.PullRequest        as BPP (PullRequestPost(..))
+import           Bitbucket.Common             as BC
 
-newtype Html = Html
-  { htmlHref :: String
-  } deriving (Show, Generic)
+urlFromIssue :: BI.Issue -> String
+urlFromIssue = maybe "" BC.href . BC.html . BI.links
 
-instance FromJSON Html where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-data Links = Links
-  { linksSelf     :: Html
-  , linksHtml     :: Maybe Html
-  , linksComments :: Maybe Html
-  } deriving (Show, Generic)
-
-instance FromJSON Links where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-data Issue = Issue
-  { issueId    :: Integer
-  , issueTitle :: String
-  , issueLinks :: Links
-  } deriving (Show, Generic)
-
-instance FromJSON Issue where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-data IssueContent = IssueContent
-  { issuecontentRaw    :: String
-  , issuecontentMarkup :: String
-  } deriving (Show, Generic)
-
-instance ToJSON IssueContent where
-  toJSON = genericToJSON $ aesonPrefix snakeCase
-
-data IssuePost = IssuePost
-  { issuepostTitle   :: String
-  , issuepostContent :: IssueContent
-  } deriving (Show, Generic)
-
-instance ToJSON IssuePost where
-  toJSON = genericToJSON $ aesonPrefix snakeCase
-
-data Issues = Issues
-  { issuesSize   :: Integer
-  , issuesValues :: [Issue]
-  , issuesNext   :: Maybe String
-  } deriving (Show, Generic)
-
-instance FromJSON Issues where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-data PullRequest = PullRequest
-  { pullrequestId          :: Integer
-  , pullrequestTitle       :: String
-  , pullrequestLinks       :: Links
-  , pullrequestSource      :: PullRequestBranch
-  , pullrequestDestination :: PullRequestBranch
-  } deriving (Show, Generic)
-
-instance FromJSON PullRequest where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-data PullRequestPost = PullRequestPost
-  { pullrequestpostTitle       :: String
-  , pullrequestpostSource      :: PullRequestBranch
-  , pullrequestpostDestination :: PullRequestBranch
-  , pullrequestpostDescription :: String
-  } deriving (Show, Generic)
-
-instance ToJSON PullRequestPost where
-  toJSON = genericToJSON $ aesonPrefix snakeCase
-
-newtype PullRequestBranch = PullRequestBranch
-  { branchBranch :: BranchDetails
-  } deriving (Show, Generic)
-
-instance FromJSON PullRequestBranch where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-instance ToJSON PullRequestBranch where
-  toJSON = genericToJSON $ aesonPrefix snakeCase
-
-newtype BranchDetails = BranchDetails
-  { branchName :: String
-  } deriving (Show, Generic)
-
-instance FromJSON BranchDetails where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-instance ToJSON BranchDetails where
-  toJSON = genericToJSON $ aesonPrefix snakeCase
-
-data PullRequests = PullRequests
-  { pullrequestsSize   :: Integer
-  , pullrequestsValues :: [PullRequest]
-  , pullrequestsNext   :: Maybe String
-  } deriving (Show, Generic)
-
-instance FromJSON PullRequests where
-  parseJSON = genericParseJSON $ aesonPrefix snakeCase
-
-urlFromIssue :: Issue -> String
-urlFromIssue = maybe "" htmlHref . linksHtml . issueLinks
-
-urlFromPullRequest :: PullRequest -> String
-urlFromPullRequest  = maybe "" htmlHref . linksHtml . pullrequestLinks
+urlFromPullRequest :: BP.PullRequest -> String
+urlFromPullRequest  = maybe "" BC.href . BC.html . BP.links
 
 responseToIssue :: Issue -> I.Issue
 responseToIssue i =
-   I.Issue (Just . show $ issueId i) (issueTitle i) Nothing (Just $ urlFromIssue i)
+   I.Issue (Just . show $ BI.id i) (BI.title i) Nothing (Just $ urlFromIssue i)
 
 responseToPullRequest :: PullRequest -> PR.PullRequest
 responseToPullRequest pr =
-  PR.PullRequest (Just . show $ pullrequestId pr) (pullrequestTitle pr)
+  PR.PullRequest (Just . show $ BP.id pr) (BP.title pr)
                  "" "" Nothing (Just htmlLink)
                    where htmlLink = urlFromPullRequest pr
 
 prToPullRequestPost :: PR.PullRequest -> PullRequestPost
-prToPullRequestPost pr = PullRequestPost (PR.title pr) source dest (fromMaybe "" (PR.body pr))
-  where source = PullRequestBranch $ BranchDetails (PR.srcBranch pr)
+prToPullRequestPost pr = PullRequestPost (PR.title pr) src dest (fromMaybe "" (PR.body pr))
+  where src = PullRequestBranch $ BranchDetails (PR.srcBranch pr)
         dest = PullRequestBranch $ BranchDetails (PR.destBranch pr)
 
 baseUrl :: String
@@ -259,7 +163,7 @@ createIssue token issue = responseToIssue <$> runCreate token "/issues" param
   where param = issueToIssuePost issue
 
 issueToIssuePost :: I.Issue -> IssuePost
-issueToIssuePost issue = IssuePost (I.title issue) (IssueContent body "plaintext")
+issueToIssuePost issue = IssuePost (I.title issue) (BI.IssueContent body "plaintext")
   where body = fromMaybe "" $ I.body issue
 
 listIssues :: String -> Bool -> IO [I.Issue]
@@ -275,9 +179,9 @@ getIssuesFromUrl :: Token -> String -> IO [Issue]
 getIssuesFromUrl _ "" = return []
 getIssuesFromUrl token url = do
   resp <- getBitbucket token url
-  let decoded = decodeResponseOrError resp :: Issues
-      issues = issuesValues decoded
-  nextIssues <- getIssuesFromUrl token (fromMaybe "" (issuesNext decoded))
+  let decoded = decodeResponseOrError resp :: BI.Issues
+      issues = BI.values decoded
+  nextIssues <- getIssuesFromUrl token (fromMaybe "" (BI.next decoded))
   return $ issues ++ nextIssues
 
 getPullRequest :: Token -> String -> IO PR.PullRequest
@@ -302,8 +206,8 @@ getPullRequestsFromUrl _ "" = return []
 getPullRequestsFromUrl token url = do
   resp <- getBitbucket token url
   let decoded = decodeResponseOrError resp :: PullRequests
-      items = pullrequestsValues decoded
-  nextPullRequests <- getPullRequestsFromUrl token (fromMaybe "" (pullrequestsNext decoded))
+      items = BP.values decoded
+  nextPullRequests <- getPullRequestsFromUrl token (fromMaybe "" (BP.next decoded))
   return $ items ++ nextPullRequests
 
 runItemQuery :: FromJSON a => Token -> String -> IO a
