@@ -9,7 +9,7 @@ module Bitbucket.Issue
   , IssuePost (..)
   ) where
 
-import           Bitbucket.Common (Links(..))
+import           Bitbucket.Common (Links (..))
 import           Bitbucket.Utils  (jsonOptions)
 import           Data.Aeson       (FromJSON (parseJSON), ToJSON (toJSON),
                                    genericParseJSON, genericToJSON)

@@ -16,6 +16,7 @@ import           Remote                (authenticate, createIssue,
                                         getIssue, getPullRequest, listIssues,
                                         listPullRequests, open, parseMessage)
 import           RemoteTypes           (Remote (..))
+import qualified RemoteTypes           as R
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
                                         OptDescr (..), getOpt, usageInfo)
 import           System.Directory      (removeFile)
@@ -23,7 +24,6 @@ import           System.Environment    (getArgs)
 import           Text.RawString.QQ
 import qualified Types.Issue           as I
 import qualified Types.PullRequest     as PR
-import qualified RemoteTypes     as R
 import           WebUtils              as WU
 
 data Flag = Help | Verbose | Version

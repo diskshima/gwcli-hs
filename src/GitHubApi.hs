@@ -23,7 +23,13 @@ import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as U8
 import           Data.Function          ((&))
 import           GHC.Generics
-import           GitUtils               (Branch, RepoInfo (..), repoInfoFromRepo)
+import           GitHub.Issue           as IG (IssueGet (..))
+import           GitHub.Issue           as IP (IssuePost (..))
+import           GitHub.PullRequest     as PRG (PullRequestGet (..))
+import           GitHub.PullRequest     as PRP (PullRequestPost (..))
+import           GitHub.Utils           (jsonOptions)
+import           GitUtils               (Branch, RepoInfo (..),
+                                         repoInfoFromRepo)
 import           JsonUtils              (decodeResponse, decodeResponseAsList)
 import           Network.HTTP.Types.URI (renderQuery)
 import           Network.Wreq           (Options, Response, defaults, getWith,
@@ -35,11 +41,6 @@ import           Text.Printf            (printf)
 import qualified Types.Issue            as I
 import qualified Types.PullRequest      as PR
 import           WebUtils               (ParamList, Token, toParamList)
-import           GitHub.Issue           as IG (IssueGet(..))
-import           GitHub.Issue           as IP (IssuePost(..))
-import           GitHub.PullRequest     as PRG (PullRequestGet(..))
-import           GitHub.PullRequest     as PRP (PullRequestPost(..))
-import           GitHub.Utils           (jsonOptions)
 
 newtype RepoGet = RepoGet
   { defaultBranch :: String
@@ -171,4 +172,4 @@ extractBranch :: Response BL.ByteString -> IO (Maybe Branch)
 extractBranch response =
   case decodeResponse response of
     Just item -> return (Just $ defaultBranch item)
-    Nothing -> return Nothing
+    Nothing   -> return Nothing
