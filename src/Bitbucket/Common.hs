@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Bitbucket.Common
   (
@@ -6,8 +6,8 @@ module Bitbucket.Common
   , Links (..)
   ) where
 
-import           Bitbucket.Utils  (jsonOptions)
-import           Data.Aeson       (FromJSON (parseJSON), genericParseJSON)
+import           Bitbucket.Utils (jsonOptions)
+import           Data.Aeson      (FromJSON (parseJSON), genericParseJSON)
 import           GHC.Generics
 
 newtype Html = Html

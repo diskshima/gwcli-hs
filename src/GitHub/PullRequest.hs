@@ -7,10 +7,10 @@ module GitHub.PullRequest
   , PullRequestPost (..)
   ) where
 
-import           Data.Aeson             (FromJSON (parseJSON), ToJSON (toJSON),
-                                         genericParseJSON, genericToJSON)
+import           Data.Aeson   (FromJSON (parseJSON), ToJSON (toJSON),
+                               genericParseJSON, genericToJSON)
 import           GHC.Generics
-import           GitHub.Utils           (jsonOptions)
+import           GitHub.Utils (jsonOptions)
 
 data PullRequestGet = PullRequestGet
   { number  :: Integer

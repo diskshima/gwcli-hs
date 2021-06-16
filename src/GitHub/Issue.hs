@@ -7,10 +7,10 @@ module GitHub.Issue
   , IssuePost (..)
   ) where
 
-import           Data.Aeson             (FromJSON (parseJSON), ToJSON (toJSON),
-                                         genericParseJSON, genericToJSON)
+import           Data.Aeson   (FromJSON (parseJSON), ToJSON (toJSON),
+                               genericParseJSON, genericToJSON)
 import           GHC.Generics
-import           GitHub.Utils           (jsonOptions)
+import           GitHub.Utils (jsonOptions)
 
 data IssueGet = IssueGet
   { number  :: Integer
