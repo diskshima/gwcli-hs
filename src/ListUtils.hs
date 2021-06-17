@@ -1,9 +1,13 @@
 module ListUtils
   (
-    firstMatching
+    dropLast
+  , firstMatching
   , formatEachAndJoin
   , nthOrDefault
   , nthOrNothing
+  , replace
+  , split
+  , takeLast
   ) where
 
 import           Data.List  (find, intercalate)
@@ -28,3 +32,24 @@ formatEachAndJoin list formatter = intercalate "\n" $ fmap formatter list
 firstMatching :: Eq a => [a] -> [a] -> Maybe a
 firstMatching items = find matches
   where matches candidate = candidate `elem` items
+
+replace :: Eq a => [a] -> [a] -> [a] -> [a]
+replace old new list = intercalate new (split old list)
+
+split :: Eq a => [a] -> [a] -> [[a]]
+split _    [] = [[]]
+split item xs = split' item xs []
+
+split' :: Eq a => [a] -> [a] -> [a] -> [[a]]
+split' _    []     acc = [acc]
+split' item (x:xs) acc =
+  if item == takeLast (length item) nextAcc
+     then dropLast (length item - 1) acc : split' item xs []
+     else split' item xs nextAcc
+  where nextAcc = acc ++ [x]
+
+dropLast :: Int -> [a] -> [a]
+dropLast len list = take (length list - len) list
+
+takeLast :: Int -> [a] -> [a]
+takeLast len list = drop (length list - len) list

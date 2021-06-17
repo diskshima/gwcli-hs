@@ -13,7 +13,7 @@ import           Data.Git.Named      (looseRemotesList)
 import           Data.Git.Repository (configGet, headGet)
 import           Data.Git.Storage    (findRepoMaybe, openRepo, withCurrentRepo)
 import           Data.List           (isPrefixOf, isSuffixOf)
-import           Data.String.Utils   (replace)
+import           ListUtils           (replace)
 import           Network.URI         (parseURI, pathSegments)
 import           Text.Printf         (printf)
 
