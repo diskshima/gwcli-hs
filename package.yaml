@@ -32,7 +32,6 @@ dependencies:
 - http-conduit
 - http-types
 - lens
-- MissingH
 - network
 - network-uri
 - process
