@@ -17,7 +17,7 @@ packages:
     url: https://github.com/kquick/hs-git/archive/fdb7973ff2c482124d7806906a24bdfc5b94b989.tar.gz
 snapshots:
 - completed:
-    size: 585817
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/5.yaml
-    sha256: 22d24d0dacad9c1450b9a174c28d203f9bb482a2a8da9710a2f2a9f4afee2887
-  original: lts-18.5
+    size: 586268
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/13.yaml
+    sha256: d9e658a22cfe8d87a64fdf219885f942fef5fe2bcb156a9800174911c5da2443
+  original: lts-18.13
