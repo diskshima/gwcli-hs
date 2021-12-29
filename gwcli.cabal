@@ -1,0 +1,110 @@
+cabal-version: 2.4
+
+name:           gwcli
+version:        0.7.1.0
+description:    Please see the README on Github at <https://github.com/diskshima/gwcli-hs#readme>
+homepage:       https://github.com/diskshima/gwcli-hs#readme
+bug-reports:    https://github.com/diskshima/gwcli-hs/issues
+author:         Daisuke Shimamoto
+maintainer:     diskshima@gmail.com
+copyright:      2020 Daisuke Shimamoto
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/diskshima/gwcli-hs
+
+executable gwcli
+  main-is: Main.hs
+  other-modules:
+      Bitbucket.Common
+      Bitbucket.Issue
+      Bitbucket.PullRequest
+      Bitbucket.Utils
+      BitbucketApi
+      CredentialUtils
+      GitHub.Issue
+      GitHub.PullRequest
+      GitHub.Utils
+      GitHubApi
+      GitUtils
+      JsonUtils
+      ListUtils
+      Opener
+      Remote
+      RemoteTypes
+      StringUtils
+      Types.Issue
+      Types.PullRequest
+      WebUtils
+      Paths_gwcli
+  hs-source-dirs:
+      app
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -Werror -O4
+  build-depends:
+      HTTP
+    , aeson
+    , aeson-casing
+    , base >=4.7 && <5
+    , bytestring
+    , directory
+    , filepath
+    , git
+    , hoauth2
+    , http-conduit
+    , http-types
+    , lens
+    , network
+    , network-uri
+    , process
+    , raw-strings-qq
+    , string-conversions
+    , temporary
+    , text
+    , typed-process
+    , uri-bytestring
+    , utf8-string
+    , wreq
+    , yaml
+  default-language: Haskell2010
+
+test-suite gwcli-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_gwcli
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      HTTP
+    , aeson
+    , aeson-casing
+    , base >=4.7 && <5
+    , bytestring
+    , directory
+    , filepath
+    , git
+    , hoauth2
+    , http-conduit
+    , http-types
+    , lens
+    , network
+    , network-uri
+    , process
+    , raw-strings-qq
+    , string-conversions
+    , temporary
+    , text
+    , typed-process
+    , uri-bytestring
+    , utf8-string
+    , wreq
+    , yaml
+  default-language: Haskell2010
