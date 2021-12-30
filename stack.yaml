@@ -1,9 +1,0 @@
-resolver: lts-18.13
-
-extra-deps:
-- github: kquick/hs-git
-  commit: fdb7973ff2c482124d7806906a24bdfc5b94b989
-
-# For LSP support
-packages:
-- .

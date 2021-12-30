@@ -1,5 +1,4 @@
-# Stack
-.stack-work/
-*.cabal
+# Cabal
+dist-newstyle/
 
 *~
