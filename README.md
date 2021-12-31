@@ -25,14 +25,18 @@ You're good to go :smile:
 ## Developing gwcli-hs
 
 ### Setup
-1. Install `stack`
-    ```bash
-     brew install stack  # macOS + brew
-        or
-     curl -sSL https://get.haskellstack.org/ | sh
-    ```
+
+1. Install LLVM.
+    - macOS
+        ```sh
+        brew install llvm
+         # Make sure the brew installed version of llvm is used.
+        PATH="$(brew --prefix)/opt/llvm/bin:$PATH"
+        ```
 
 ### Build
-```bash
-stack build
-```
+
+1. Run Cabal
+    ```sh
+    cabal build
+    ```
