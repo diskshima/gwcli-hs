@@ -1,6 +1,5 @@
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module GitHubApi
   (
@@ -25,6 +24,7 @@ import qualified Data.ByteString.Lazy      as BL
 import qualified Data.ByteString.UTF8      as U8
 import           Data.Function             ((&))
 import           Data.Git.Storage          (findRepoMaybe)
+import           Data.Maybe                (fromMaybe)
 import           Filesystem.Path.CurrentOS (encodeString)
 import           GHC.Generics
 import           GitHub.Issue              as IG (IssueGet (..))
@@ -175,24 +175,24 @@ runCreate token suffix param = do
     Nothing -> P.error "Could not identify remote URL."
 
 readIssueTemplate :: IO String
-readIssueTemplate = do
-  mRepoPath <- findRepoMaybe
-  case mRepoPath of
-    Just repoPath -> do
-      exists <- doesPathExist templatePath
-      if exists then readFile templatePath else return ""
-        where templatePath = encodeString repoPath ++ "/../.github/ISSUE_TEMPLATE.md"
-    Nothing -> return ""
+readIssueTemplate = readFileFromRepoRoot ".github/ISSUE_TEMPLATE.md"
 
 readPRTemplate :: IO String
-readPRTemplate = do
+readPRTemplate = readFileFromRepoRoot ".github/PULL_REQUEST_TEMPLATE.md"
+
+readFileFromRepoRoot :: String -> IO String
+readFileFromRepoRoot path = do
   mRepoPath <- findRepoMaybe
   case mRepoPath of
-    Just repoPath -> do
-      exists <- doesPathExist templatePath
-      if exists then readFile templatePath else return ""
-        where templatePath = encodeString repoPath ++ "/../.github/PULL_REQUEST_TEMPLATE.md"
+    Just repoPath -> fromMaybe "" <$> maybeReadFile (encodeString repoPath ++ "/../" ++ path)
     Nothing -> return ""
+
+maybeReadFile :: String -> IO (Maybe String)
+maybeReadFile fp = do
+  exists <- doesPathExist fp
+  if exists
+     then Just <$> readFile fp
+     else return Nothing
 
 extractBranch :: Response BL.ByteString -> IO (Maybe Branch)
 extractBranch response =
