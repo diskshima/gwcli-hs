@@ -175,24 +175,17 @@ runCreate token suffix param = do
     Nothing -> P.error "Could not identify remote URL."
 
 readIssueTemplate :: IO String
-readIssueTemplate = do
-  mRepoPath <- findRepoMaybe
-  case mRepoPath of
-    Just repoPath -> fromMaybe "" <$> maybeReadFile (encodeString repoPath ++ "/../.github/ISSUE_TEMPLATE.md")
-    Nothing -> return ""
+readIssueTemplate = readFileFromRepoRoot ".github/ISSUE_TEMPLATE.md"
 
 readPRTemplate :: IO String
-readPRTemplate = do
+readPRTemplate = readFileFromRepoRoot ".github/PULL_REQUEST_TEMPLATE.md"
+
+readFileFromRepoRoot :: String -> IO String
+readFileFromRepoRoot path = do
   mRepoPath <- findRepoMaybe
   case mRepoPath of
-    Just repoPath -> fromMaybe "" <$> maybeReadFile (encodeString repoPath ++ "/../.github/PULL_REQUEST_TEMPLATE.md")
+    Just repoPath -> fromMaybe "" <$> maybeReadFile (encodeString repoPath ++ "/../" ++ path)
     Nothing -> return ""
-
-extractBranch :: Response BL.ByteString -> IO (Maybe Branch)
-extractBranch response =
-  case decodeResponse response of
-    Just item -> return (Just $ defaultBranch item)
-    Nothing   -> return Nothing
 
 maybeReadFile :: String -> IO (Maybe String)
 maybeReadFile fp = do
@@ -200,3 +193,9 @@ maybeReadFile fp = do
   if exists
      then Just <$> readFile fp
      else return Nothing
+
+extractBranch :: Response BL.ByteString -> IO (Maybe Branch)
+extractBranch response =
+  case decodeResponse response of
+    Just item -> return (Just $ defaultBranch item)
+    Nothing   -> return Nothing
