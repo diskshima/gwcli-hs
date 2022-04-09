@@ -63,6 +63,14 @@ open remote file openBrowser = do
       where url = browserPath ri remote branch file
     Nothing -> P.error "Could not identify repo info."
 
+readIssueTemplate :: Remote -> IO String
+readIssueTemplate (GitHub _)    = GH.readIssueTemplate
+readIssueTemplate (Bitbucket _) = BB.readIssueTemplate
+
+readPRTemplate :: Remote -> IO String
+readPRTemplate (GitHub _)    = GH.readPRTemplate
+readPRTemplate (Bitbucket _) = BB.readPRTemplate
+
 browserPath :: RepoInfo -> Remote -> Branch -> Maybe FilePath -> String
 browserPath ri remote br mFP =
   case (remote, mFP) of

@@ -12,35 +12,41 @@ module GitHubApi
   , listIssues
   , listPullRequests
   , prToPullRequestPost
+  , readIssueTemplate
+  , readPRTemplate
   , responseToPullRequest
   , runCreate
   ) where
 
-import           Control.Lens.Operators ((.~), (^.))
-import           Data.Aeson             (FromJSON (parseJSON), ToJSON (toJSON),
-                                         genericParseJSON)
-import qualified Data.ByteString.Lazy   as BL
-import qualified Data.ByteString.UTF8   as U8
-import           Data.Function          ((&))
+import           Control.Lens.Operators    ((.~), (^.))
+import           Data.Aeson                (FromJSON (parseJSON),
+                                            ToJSON (toJSON), genericParseJSON)
+import qualified Data.ByteString.Lazy      as BL
+import qualified Data.ByteString.UTF8      as U8
+import           Data.Function             ((&))
+import           Data.Git.Storage          (findRepoMaybe)
+import           Filesystem.Path.CurrentOS (encodeString)
 import           GHC.Generics
-import           GitHub.Issue           as IG (IssueGet (..))
-import           GitHub.Issue           as IP (IssuePost (..))
-import           GitHub.PullRequest     as PRG (PullRequestGet (..))
-import           GitHub.PullRequest     as PRP (PullRequestPost (..))
-import           GitHub.Utils           (jsonOptions)
-import           GitUtils               (Branch, RepoInfo (..),
-                                         repoInfoFromRepo)
-import           JsonUtils              (decodeResponse, decodeResponseAsList)
-import           Network.HTTP.Types.URI (renderQuery)
-import           Network.Wreq           (Options, Response, defaults, getWith,
-                                         header, linkURL, postWith,
-                                         responseLink)
-import           Network.Wreq.Types     (Postable)
-import           Prelude                as P
-import           Text.Printf            (printf)
-import qualified Types.Issue            as I
-import qualified Types.PullRequest      as PR
-import           WebUtils               (ParamList, Token, toParamList)
+import           GitHub.Issue              as IG (IssueGet (..))
+import           GitHub.Issue              as IP (IssuePost (..))
+import           GitHub.PullRequest        as PRG (PullRequestGet (..))
+import           GitHub.PullRequest        as PRP (PullRequestPost (..))
+import           GitHub.Utils              (jsonOptions)
+import           GitUtils                  (Branch, RepoInfo (..),
+                                            repoInfoFromRepo)
+import           JsonUtils                 (decodeResponse,
+                                            decodeResponseAsList)
+import           Network.HTTP.Types.URI    (renderQuery)
+import           Network.Wreq              (Options, Response, defaults,
+                                            getWith, header, linkURL, postWith,
+                                            responseLink)
+import           Network.Wreq.Types        (Postable)
+import           Prelude                   as P
+import           System.Directory          (doesPathExist)
+import           Text.Printf               (printf)
+import qualified Types.Issue               as I
+import qualified Types.PullRequest         as PR
+import           WebUtils                  (ParamList, Token, toParamList)
 
 newtype RepoGet = RepoGet
   { defaultBranch :: String
@@ -167,6 +173,26 @@ runCreate token suffix param = do
         Just item -> return item
         Nothing   -> P.error "Failed to parse response."
     Nothing -> P.error "Could not identify remote URL."
+
+readIssueTemplate :: IO String
+readIssueTemplate = do
+  mRepoPath <- findRepoMaybe
+  case mRepoPath of
+    Just repoPath -> do
+      exists <- doesPathExist templatePath
+      if exists then readFile templatePath else return ""
+        where templatePath = encodeString repoPath ++ "/../.github/ISSUE_TEMPLATE.md"
+    Nothing -> return ""
+
+readPRTemplate :: IO String
+readPRTemplate = do
+  mRepoPath <- findRepoMaybe
+  case mRepoPath of
+    Just repoPath -> do
+      exists <- doesPathExist templatePath
+      if exists then readFile templatePath else return ""
+        where templatePath = encodeString repoPath ++ "/../.github/PULL_REQUEST_TEMPLATE.md"
+    Nothing -> return ""
 
 extractBranch :: Response BL.ByteString -> IO (Maybe Branch)
 extractBranch response =

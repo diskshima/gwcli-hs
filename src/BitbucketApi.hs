@@ -12,6 +12,8 @@ module BitbucketApi
   , getPullRequest
   , listIssues
   , listPullRequests
+  , readIssueTemplate
+  , readPRTemplate
   ) where
 
 import           Bitbucket.Common              as BC
@@ -233,6 +235,12 @@ runCreate token suffix param = do
   case maybeUrl of
     Just url -> decodeResponseOrError <$> postBitbucket token url (toJSON param)
     Nothing  -> P.error "Could not identify remote URL."
+
+readIssueTemplate :: IO String
+readIssueTemplate = return ""
+
+readPRTemplate :: IO String
+readPRTemplate = return ""
 
 postBitbucket :: Postable a => Token -> String -> a -> IO (Response BL.ByteString)
 postBitbucket token = postWith $ bearerAuthHeader token
