@@ -66,6 +66,7 @@ executable gwcli
     , process
     , raw-strings-qq
     , string-conversions
+    , system-filepath
     , temporary
     , text
     , typed-process
@@ -102,6 +103,7 @@ test-suite gwcli-test
     , process
     , raw-strings-qq
     , string-conversions
+    , system-filepath
     , temporary
     , text
     , typed-process

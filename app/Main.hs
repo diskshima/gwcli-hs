@@ -14,7 +14,8 @@ import           Opener                (openEditorWithTempFile)
 import           Remote                (authenticate, createIssue,
                                         createPullRequest, defaultBranch,
                                         getIssue, getPullRequest, listIssues,
-                                        listPullRequests, open, parseMessage)
+                                        listPullRequests, open, parseMessage,
+                                        readIssueTemplate, readPRTemplate)
 import           RemoteTypes           (Remote (..))
 import qualified RemoteTypes           as R
 import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
@@ -62,9 +63,9 @@ issueCreateOptions =
       "Issue message (body)"
   ]
 
-issueFromEditor :: IO IssueCreateOptions
-issueFromEditor = do
-  fp <- openEditorWithTempFile
+issueFromEditor :: String -> IO IssueCreateOptions
+issueFromEditor template = do
+  fp <- openEditorWithTempFile template
   content <- readFile fp
   removeFile fp
   let msg = parseMessage content
@@ -131,8 +132,9 @@ handleIssue remote params
     putStrLn $ formatEachAndJoin issues I.formatIssue
   | ssc `isPrefixOf` "create" = do
       let (parsed, _, _) = getOpt RequireOrder issueCreateOptions rest
+      template <- addEmptyTitle <$> readIssueTemplate remote
       cParams <- case parsed of
-                   [] -> issueFromEditor
+                   [] -> issueFromEditor template
                    _  -> return $ foldl (flip id) defaultIssueCreateOptions parsed
       response <- createIssue remote (paramsToIssue cParams)
       putStrLn $ I.formatIssue response
@@ -143,7 +145,7 @@ handleIssue remote params
 populateMissingPrco :: PullRequestCreateOptions -> Remote -> IO PullRequestCreateOptions
 populateMissingPrco PullRequestCreateOptions{ prcoBase=base, prcoTitle=title, prcoBody=body } remote = do
   newBase <- determineBaseBranch remote base
-  R.Message{ R.title=newTitle, R.body=newBody } <- determinePRBody title body
+  R.Message{ R.title=newTitle, R.body=newBody } <- determinePRBody remote title body
   return $ PullRequestCreateOptions { prcoBase=newBase, prcoTitle=newTitle, prcoBody=newBody }
 
 handlePullRequest :: Remote -> [String] -> IO ()
@@ -176,13 +178,19 @@ determineBaseBranch remote "" = do
       return $ fromMaybe "master" (firstMatching remoteBranches candidateBaseBranches)
 determineBaseBranch _ specifiedBranch = return specifiedBranch
 
-determinePRBody :: String -> String -> IO R.Message
-determinePRBody "" _ = do
-  fp <- openEditorWithTempFile
+determinePRBody :: Remote -> String -> String -> IO R.Message
+determinePRBody remote "" body = do
+  newBody <- case body of
+               "" -> readPRTemplate remote
+               b  -> return b
+  fp <- openEditorWithTempFile (addEmptyTitle newBody)
   content <- readFile fp
   removeFile fp
   return $ parseMessage content
-determinePRBody title body = return $ R.Message title body
+determinePRBody _ title body = return $ R.Message title body
+
+addEmptyTitle :: String -> String
+addEmptyTitle = (++) "\n\n"
 
 handleAuth :: Remote -> Credentials -> FilePath -> IO ()
 handleAuth remote creds credFP = do
