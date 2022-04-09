@@ -24,6 +24,7 @@ import qualified Data.ByteString.Lazy      as BL
 import qualified Data.ByteString.UTF8      as U8
 import           Data.Function             ((&))
 import           Data.Git.Storage          (findRepoMaybe)
+import           Data.Maybe                (fromMaybe)
 import           Filesystem.Path.CurrentOS (encodeString)
 import           GHC.Generics
 import           GitHub.Issue              as IG (IssueGet (..))
@@ -177,20 +178,14 @@ readIssueTemplate :: IO String
 readIssueTemplate = do
   mRepoPath <- findRepoMaybe
   case mRepoPath of
-    Just repoPath -> do
-      exists <- doesPathExist templatePath
-      if exists then readFile templatePath else return ""
-        where templatePath = encodeString repoPath ++ "/../.github/ISSUE_TEMPLATE.md"
+    Just repoPath -> fromMaybe "" <$> maybeReadFile (encodeString repoPath ++ "/../.github/ISSUE_TEMPLATE.md")
     Nothing -> return ""
 
 readPRTemplate :: IO String
 readPRTemplate = do
   mRepoPath <- findRepoMaybe
   case mRepoPath of
-    Just repoPath -> do
-      exists <- doesPathExist templatePath
-      if exists then readFile templatePath else return ""
-        where templatePath = encodeString repoPath ++ "/../.github/PULL_REQUEST_TEMPLATE.md"
+    Just repoPath -> fromMaybe "" <$> maybeReadFile (encodeString repoPath ++ "/../.github/PULL_REQUEST_TEMPLATE.md")
     Nothing -> return ""
 
 extractBranch :: Response BL.ByteString -> IO (Maybe Branch)
@@ -198,3 +193,10 @@ extractBranch response =
   case decodeResponse response of
     Just item -> return (Just $ defaultBranch item)
     Nothing   -> return Nothing
+
+maybeReadFile :: String -> IO (Maybe String)
+maybeReadFile fp = do
+  exists <- doesPathExist fp
+  if exists
+     then Just <$> readFile fp
+     else return Nothing
