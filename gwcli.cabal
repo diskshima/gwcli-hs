@@ -56,10 +56,11 @@ executable gwcli
     , directory
     , filepath
     , git
-    , hoauth2
+    , hoauth2 >= 2.4.0
     , http-conduit
     , http-types
     , lens
+    , mtl
     , network
     , network-uri
     , process
@@ -91,10 +92,11 @@ test-suite gwcli-test
     , directory
     , filepath
     , git
-    , hoauth2
+    , hoauth2 >= 2.4.0
     , http-conduit
     , http-types
     , lens
+    , mtl
     , network
     , network-uri
     , process
