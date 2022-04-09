@@ -15,6 +15,7 @@ module WebUtils
   , toParamList
   ) where
 
+import           Control.Monad.Except              (runExceptT)
 import qualified Data.ByteString.UTF8              as U8
 import           Data.String.Conversions           (convertString)
 import           Data.Yaml                         (FromJSON, ToJSON)
@@ -27,13 +28,13 @@ import           Network.HTTP.Conduit              (newManager,
                                                     tlsManagerSettings)
 import           Network.HTTP.Types.URI            (QueryItem, parseQuery)
 import           Network.OAuth.OAuth2              (ExchangeToken (..),
-                                                    OAuth2 (..), OAuth2Result,
-                                                    OAuth2Token,
+                                                    OAuth2 (..), OAuth2Token,
                                                     RefreshToken (..),
                                                     accessToken, atoken,
+                                                    fetchAccessToken,
                                                     refreshAccessToken,
                                                     refreshToken, rtoken)
-import           Network.OAuth.OAuth2.HttpClient   (fetchAccessToken)
+import           Network.OAuth.OAuth2.Internal     (OAuth2Error)
 import           Network.OAuth.OAuth2.TokenRequest (Errors)
 import           Network.Socket
 import           Network.URI
@@ -50,6 +51,8 @@ instance FromJSON Tokens
 instance ToJSON Tokens
 
 type ParamList = [(U8.ByteString, Maybe U8.ByteString)]
+
+type AccessTokenRespE = Either (OAuth2Error Errors) OAuth2Token
 
 toParamList :: [(String, String)] -> ParamList
 toParamList = P.map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
@@ -74,29 +77,29 @@ receiveWebRequest portNum = do
 
 fetchOAuth2AccessToken :: OAuth2 -> U8.ByteString -> IO Tokens
 fetchOAuth2AccessToken oauth2 authCode = do
-  manager <- newManager tlsManagerSettings
   let textAuthCode = convertString authCode
-  resp <- fetchAccessToken manager oauth2 ExchangeToken { extoken = textAuthCode }
-  return $ responseToTokens resp
+  manager <- newManager tlsManagerSettings
+  resp <- runExceptT (fetchAccessToken manager oauth2 ExchangeToken { extoken = textAuthCode })
+  return (responseToTokens resp)
 
 refreshOAuth2AccessToken :: OAuth2 -> U8.ByteString -> IO Tokens
 refreshOAuth2AccessToken oauth2 refreshToken = do
-  manager <- newManager tlsManagerSettings
   let textRefreshToken = convertString refreshToken
-  resp <- refreshAccessToken manager oauth2 RefreshToken { rtoken = textRefreshToken }
+  manager <- newManager tlsManagerSettings
+  resp <- runExceptT (refreshAccessToken manager oauth2 RefreshToken { rtoken = textRefreshToken })
   return $ responseToTokens resp
 
-responseToTokens :: OAuth2Result Errors OAuth2Token -> Tokens
+responseToTokens :: AccessTokenRespE -> Tokens
 responseToTokens resp =
   Tokens { accessToken = newAccessToken, refreshToken = newRefreshToken }
     where newAccessToken = extractAccessToken resp
           newRefreshToken = extractRefreshToken resp
 
-extractAccessToken :: OAuth2Result Errors OAuth2Token -> String
+extractAccessToken :: AccessTokenRespE -> String
 extractAccessToken (Left err) = P.error $ show err
 extractAccessToken (Right token) = (convertString . atoken . Network.OAuth.OAuth2.accessToken) token
 
-extractRefreshToken :: OAuth2Result Errors OAuth2Token -> String
+extractRefreshToken :: AccessTokenRespE -> String
 extractRefreshToken (Left err) = P.error $ show err
 extractRefreshToken (Right token) =
   maybe (P.error "No refresh token") (convertString . rtoken) (Network.OAuth.OAuth2.refreshToken token)

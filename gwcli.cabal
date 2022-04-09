@@ -60,6 +60,7 @@ executable gwcli
     , http-conduit
     , http-types
     , lens
+    , mtl
     , network
     , network-uri
     , process
@@ -95,6 +96,7 @@ test-suite gwcli-test
     , http-conduit
     , http-types
     , lens
+    , mtl
     , network
     , network-uri
     , process
