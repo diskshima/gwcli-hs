@@ -12,10 +12,19 @@ import           Data.Aeson   (FromJSON (parseJSON), ToJSON (toJSON),
 import           GHC.Generics
 import           GitHub.Utils (jsonOptions)
 
-data IssueGet = IssueGet
-  { number  :: Integer
+data IssuePullRequest = IssuePullRequest
+  { url     :: String
   , htmlUrl :: String
-  , title   :: String
+  } deriving (Show, Generic)
+
+instance FromJSON IssuePullRequest where
+  parseJSON = genericParseJSON jsonOptions
+
+data IssueGet = IssueGet
+  { number      :: Integer
+  , htmlUrl     :: String
+  , title       :: String
+  , pullRequest :: Maybe IssuePullRequest
   } deriving (Show, Generic)
 
 instance FromJSON IssueGet where
