@@ -22,9 +22,14 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: gwcli_linux
+      - name: Output
+        run: |
+          pwd
+          ls -al
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
+          fail_on_unmatched_files: true
           files: |
             gwcli_macos_x86
             gwcli_linux
