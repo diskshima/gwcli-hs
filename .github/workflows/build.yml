@@ -1,10 +1,13 @@
+---
 name: Build
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build:
@@ -14,25 +17,25 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
     steps:
-    - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v1
-      with:
-        ghc-version: '8.10.7'
-        cabal-version: '3.6.2.0'
-    - name: cabal build
-      run: cabal build
-    - name: Output binary path
-      id: output_cabal
-      run: echo "::set-output name=local_bin::$(cabal list-bin gwcli)"
-    - name: Upload binary (macOS)
-      if: ${{ matrix.os == 'macos-latest' }}
-      uses: actions/upload-artifact@v2
-      with:
-        name: gwcli_macos
-        path: ${{ steps.output_cabal.outputs.local_bin }}
-    - name: Upload binary (Ubuntu)
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      uses: actions/upload-artifact@v2
-      with:
-        name: gwcli_ubuntu
-        path: ${{ steps.output_cabal.outputs.local_bin }}
+      - uses: actions/checkout@v2
+      - uses: haskell/actions/setup@v1
+        with:
+          ghc-version: '8.10.7'
+          cabal-version: '3.6.2.0'
+      - name: cabal build
+        run: cabal build
+      - name: Output binary path
+        id: output_cabal
+        run: echo "::set-output name=local_bin::$(cabal list-bin gwcli)"
+      - name: Upload binary (macOS)
+        if: ${{ matrix.os == 'macos-latest' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: gwcli_macos
+          path: ${{ steps.output_cabal.outputs.local_bin }}
+      - name: Upload binary (Ubuntu)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: gwcli_ubuntu
+          path: ${{ steps.output_cabal.outputs.local_bin }}
