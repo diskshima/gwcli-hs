@@ -1,0 +1,30 @@
+---
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact (macOS x86)
+        uses: actions/download-artifact@v3
+        with:
+          name: gwcli_macos_x86
+      - name: Download build artifact (Linux)
+        uses: actions/download-artifact@v3
+        with:
+          name: gwcli_linux
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            gwcli_macos_x86
+            gwcli_linux
