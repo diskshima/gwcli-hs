@@ -7,10 +7,12 @@ import           CredentialUtils       (Credentials (..), credFilePath,
                                         readCredential, writeCredential)
 import           Data.List             (isInfixOf, isPrefixOf)
 import           Data.Maybe            (fromMaybe, listToMaybe)
+import           Data.Version          (showVersion)
 import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl,
                                         listRemoteBranches)
 import           ListUtils             (firstMatching, formatEachAndJoin)
 import           Opener                (openEditorWithTempFile)
+import           Paths_gwcli           (version)
 import           Remote                (authenticate, createIssue,
                                         createPullRequest, defaultBranch,
                                         getIssue, getPullRequest, listIssues,
@@ -244,6 +246,9 @@ handleBrowse remote params =
                 foldl (flip id) defaultBrowseOptions opts
     (_, _, errs)  -> printError $ concat errs ++ "Invalid option."
 
+handleShowVersion :: IO ()
+handleShowVersion = putStrLn ("gwcli " ++ showVersion version)
+
 dispatchSubcommand :: [String] -> Remote -> Credentials -> FilePath -> IO ()
 dispatchSubcommand opts remote c credFP
   | sc `isPrefixOf` "auth"     = handleAuth remote c credFP
@@ -251,6 +256,7 @@ dispatchSubcommand opts remote c credFP
   | isPullRequestSubCommand sc = handlePullRequest remote rest
   | sc `isPrefixOf` "browse"   = handleBrowse remote rest
   | sc `isPrefixOf` "help"     = handleHelp
+  | sc `isPrefixOf` "version"  = handleShowVersion
   | otherwise                  = printError "Please specify subcommand"
     where (sc : rest) = opts
 
