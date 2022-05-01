@@ -34,9 +34,9 @@ jobs:
         with:
           name: gwcli_macos_x86
           path: ${{ steps.output_cabal.outputs.local_bin }}
-      - name: Upload binary (Ubuntu)
+      - name: Upload binary (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions/upload-artifact@v3
         with:
-          name: gwcli_ubuntu
+          name: gwcli_linux
           path: ${{ steps.output_cabal.outputs.local_bin }}
