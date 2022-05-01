@@ -30,13 +30,13 @@ jobs:
         run: echo "::set-output name=local_bin::$(cabal list-bin gwcli)"
       - name: Upload binary (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: gwcli_macos
           path: ${{ steps.output_cabal.outputs.local_bin }}
       - name: Upload binary (Ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: gwcli_ubuntu
           path: ${{ steps.output_cabal.outputs.local_bin }}
