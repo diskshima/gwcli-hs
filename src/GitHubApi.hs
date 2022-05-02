@@ -63,7 +63,12 @@ getIssue token issueId = responseToIssue <$> runItemQuery token path
     where path = "/issues/" ++ issueId
 
 listIssues :: Token -> Bool -> IO [I.Issue]
-listIssues token = runListQuery token "/issues" responseToIssue
+listIssues token = runListQuery token "/issues" responseToIssue isIssue
+
+isIssue :: IG.IssueGet -> Bool
+isIssue i = case IG.pullRequest i of
+              Just _  -> False
+              Nothing -> True
 
 createIssue :: Token -> I.Issue -> IO I.Issue
 createIssue token details = responseToIssue <$> runCreate token "/issues" param
@@ -74,7 +79,7 @@ getPullRequest token prId = responseToPullRequest <$> runItemQuery token path
   where path = "/pulls/" ++ prId
 
 listPullRequests :: Token -> Bool -> IO [PR.PullRequest]
-listPullRequests token = runListQuery token "/pulls" responseToPullRequest
+listPullRequests token = runListQuery token "/pulls" responseToPullRequest (const True)
 
 createPullRequest :: Token -> PR.PullRequest -> IO PR.PullRequest
 createPullRequest token item = responseToPullRequest <$> runCreate token "/pulls" param
@@ -146,11 +151,11 @@ runItemQuery token suffix = do
         Nothing   -> P.error "Failed to parse response."
     Nothing -> P.error "Could not identify remote URL."
 
-runListQuery :: FromJSON a => Token -> String -> (a -> b) -> Bool -> IO [b]
-runListQuery token suffix converter showAll = do
+runListQuery :: FromJSON a => Token -> String -> (a -> b) -> (a -> Bool) -> Bool -> IO [b]
+runListQuery token suffix converter filtFunc showAll = do
   maybeUrl <- buildUrl suffix params
   case maybeUrl of
-    Just url -> fmap converter <$> getItemsFromUrl token url
+    Just url -> fmap converter . filter filtFunc <$> getItemsFromUrl token url
     Nothing  -> P.error "Could not identify remote URL."
   where params = if showAll
                     then (Just . toParamList) [("filter", "all"), ("state", "all")]

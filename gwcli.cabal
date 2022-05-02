@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           gwcli
-version:        0.9.1.0
+version:        0.9.2.0
 description:    Please see the README on Github at <https://github.com/diskshima/gwcli-hs#readme>
 homepage:       https://github.com/diskshima/gwcli-hs#readme
 bug-reports:    https://github.com/diskshima/gwcli-hs/issues
