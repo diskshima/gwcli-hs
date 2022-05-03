@@ -3,7 +3,7 @@ packages:
 
 source-repository-package
   type: git
-  location: https://github.com/vincenthz/hs-git
-  branch: master
+  location: https://github.com/diskshima/hs-git
+  tag: 79a133c1885619954d62e213bb440448ead386e7
 
 package git
