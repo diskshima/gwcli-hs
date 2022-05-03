@@ -5,7 +5,7 @@ module Main where
 
 import           CredentialUtils       (Credentials (..), credFilePath,
                                         readCredential, writeCredential)
-import           Data.List             (isInfixOf, isPrefixOf)
+import           Data.List             (isInfixOf, isPrefixOf, uncons)
 import           Data.Maybe            (fromMaybe, listToMaybe)
 import           Data.Version          (showVersion)
 import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl,
@@ -250,15 +250,18 @@ handleShowVersion :: IO ()
 handleShowVersion = putStrLn ("gwcli " ++ showVersion version)
 
 dispatchSubcommand :: [String] -> Remote -> Credentials -> FilePath -> IO ()
-dispatchSubcommand opts remote c credFP
-  | sc `isPrefixOf` "auth"     = handleAuth remote c credFP
-  | sc `isPrefixOf` "issue"    = handleIssue remote rest
-  | isPullRequestSubCommand sc = handlePullRequest remote rest
-  | sc `isPrefixOf` "browse"   = handleBrowse remote rest
-  | sc `isPrefixOf` "help"     = handleHelp
-  | sc `isPrefixOf` "version"  = handleShowVersion
-  | otherwise                  = printError "Please specify subcommand"
-    where (sc : rest) = opts
+dispatchSubcommand opts remote c credFP =
+  case uncons opts of
+    Nothing         -> printError "Please specify subcommand"
+    Just (sc, rest) -> handler
+      where handler
+              | sc `isPrefixOf` "auth"     = handleAuth remote c credFP
+              | sc `isPrefixOf` "issue"    = handleIssue remote rest
+              | isPullRequestSubCommand sc = handlePullRequest remote rest
+              | sc `isPrefixOf` "browse"   = handleBrowse remote rest
+              | sc `isPrefixOf` "help"     = handleHelp
+              | sc `isPrefixOf` "version"  = handleShowVersion
+              | otherwise                  = printError "Please specify subcommand"
 
 main :: IO ()
 main = do
