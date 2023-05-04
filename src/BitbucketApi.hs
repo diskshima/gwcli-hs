@@ -42,8 +42,7 @@ import           GitUtils                      (RepoInfo (..), repoInfoFromRepo)
 import           JsonUtils                     (decodeResponse,
                                                 decodeResponseOrError)
 import           Network.HTTP.Types.URI        (QueryItem, renderQuery)
-import           Network.OAuth.OAuth2          (authorizationUrl)
-import           Network.OAuth.OAuth2.Internal (OAuth2 (..))
+import           Network.OAuth.OAuth2          (OAuth2 (..), authorizationUrl)
 import           Network.Wreq                  (Options, Response, defaults,
                                                 getWith, header, postWith,
                                                 responseStatus, statusCode)

@@ -56,7 +56,7 @@ executable gwcli
     , directory
     , filepath
     , git
-    , hoauth2 >= 2.4.0
+    , hoauth2 >= 2.8.0
     , http-conduit
     , http-types
     , lens
