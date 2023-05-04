@@ -42,8 +42,7 @@ import           GitUtils                      (RepoInfo (..), repoInfoFromRepo)
 import           JsonUtils                     (decodeResponse,
                                                 decodeResponseOrError)
 import           Network.HTTP.Types.URI        (QueryItem, renderQuery)
-import           Network.OAuth.OAuth2          (authorizationUrl)
-import           Network.OAuth.OAuth2.Internal (OAuth2 (..))
+import           Network.OAuth.OAuth2          (OAuth2 (..), authorizationUrl)
 import           Network.Wreq                  (Options, Response, defaults,
                                                 getWith, header, postWith,
                                                 responseStatus, statusCode)
@@ -68,7 +67,7 @@ urlFromPullRequest  = maybe "" BC.href . BC.html . BP.links
 
 responseToIssue :: Issue -> I.Issue
 responseToIssue i =
-   I.Issue (Just . show $ BI.id i) (BI.title i) Nothing (Just $ urlFromIssue i)
+  I.Issue (Just . show $ BI.id i) (BI.title i) Nothing (Just $ urlFromIssue i)
 
 responseToPullRequest :: PullRequest -> PR.PullRequest
 responseToPullRequest pr =
@@ -90,11 +89,11 @@ reposPath ri = printf "/repositories/%s/%s" (organization ri) (repository ri)
 bitbucketKey :: String -> String -> OAuth2
 bitbucketKey clientId clientSecret =
   OAuth2 { oauth2ClientId = (TL.toStrict . TL.pack) clientId
-          , oauth2ClientSecret = TL.toStrict . TL.pack $ clientSecret
-          , oauth2RedirectUri = [uri|http://127.0.0.1:8080/bitbucketCallback|]
-          , oauth2AuthorizeEndpoint = [uri|https://bitbucket.org/site/oauth2/authorize|]
-          , oauth2TokenEndpoint = [uri|https://bitbucket.org/site/oauth2/access_token|]
-}
+    , oauth2ClientSecret = TL.toStrict . TL.pack $ clientSecret
+    , oauth2RedirectUri = [uri|http://127.0.0.1:8080/bitbucketCallback|]
+    , oauth2AuthorizeEndpoint = [uri|https://bitbucket.org/site/oauth2/authorize|]
+    , oauth2TokenEndpoint = [uri|https://bitbucket.org/site/oauth2/access_token|]
+         }
 
 buildBitbucketKey :: IO OAuth2
 buildBitbucketKey = do
@@ -146,7 +145,7 @@ refreshAccessToken = do
   let newCreds = Credentials {
       github = github creds
     , bitbucket = tokens
-  }
+                             }
   writeCredential filepath newCreds
   return $ WebUtils.accessToken tokens
 

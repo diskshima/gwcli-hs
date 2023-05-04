@@ -30,12 +30,11 @@ import           Network.HTTP.Types.URI            (QueryItem, parseQuery)
 import           Network.OAuth.OAuth2              (ExchangeToken (..),
                                                     OAuth2 (..), OAuth2Token,
                                                     RefreshToken (..),
+                                                    TokenRequestError,
                                                     accessToken, atoken,
                                                     fetchAccessToken,
                                                     refreshAccessToken,
                                                     refreshToken, rtoken)
-import           Network.OAuth.OAuth2.Internal     (OAuth2Error)
-import           Network.OAuth.OAuth2.TokenRequest (Errors)
 import           Network.Socket
 import           Network.URI
 import           Prelude                           as P
@@ -52,7 +51,7 @@ instance ToJSON Tokens
 
 type ParamList = [(U8.ByteString, Maybe U8.ByteString)]
 
-type AccessTokenRespE = Either (OAuth2Error Errors) OAuth2Token
+type AccessTokenRespE = Either TokenRequestError OAuth2Token
 
 toParamList :: [(String, String)] -> ParamList
 toParamList = P.map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))

@@ -1,13 +1,13 @@
 cabal-version: 2.4
 
 name:           gwcli
-version:        0.9.3.0
-description:    Please see the README on Github at <https://github.com/diskshima/gwcli-hs#readme>
-homepage:       https://github.com/diskshima/gwcli-hs#readme
+version:        0.9.4.0
+description:    Please see the README on GitHub at <https://github.com/diskshima/gwcli-hs#readme>
+homepage:       https://github.com/diskshima/gwcli-hs
 bug-reports:    https://github.com/diskshima/gwcli-hs/issues
 author:         Daisuke Shimamoto
 maintainer:     diskshima@gmail.com
-copyright:      2022 Daisuke Shimamoto
+copyright:      2023 Daisuke Shimamoto
 license:        MIT
 license-file:   LICENSE
 build-type:     Simple
@@ -56,7 +56,7 @@ executable gwcli
     , directory
     , filepath
     , git
-    , hoauth2 >= 2.4.0
+    , hoauth2 >= 2.8.0
     , http-conduit
     , http-types
     , lens
