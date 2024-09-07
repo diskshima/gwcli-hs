@@ -107,11 +107,9 @@ buildBitbucketKey = do
         Just clientSecret -> return $ bitbucketKey clientId clientSecret
 
 extractAuthCode :: [QueryItem] -> U8.ByteString
-extractAuthCode queryItems = case lookup "code" queryItems of
-  Just code -> case code of
-    Just c -> c
-    Nothing -> P.error "Failed to extract auth code."
-  Nothing   -> P.error "Failed to extract auth code."
+extractAuthCode queryItems = maybe errorMsg P.id $ lookup "code" queryItems >>= P.id
+  where
+    errorMsg = P.error "Failed to extract auth code."
 
 authenticate :: IO Tokens
 authenticate = do
