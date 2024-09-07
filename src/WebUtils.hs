@@ -30,7 +30,7 @@ import           Network.HTTP.Types.URI            (QueryItem, parseQuery)
 import           Network.OAuth.OAuth2              (ExchangeToken (..),
                                                     OAuth2 (..), OAuth2Token,
                                                     RefreshToken (..),
-                                                    TokenRequestError,
+                                                    TokenResponseError,
                                                     accessToken, atoken,
                                                     fetchAccessToken,
                                                     refreshAccessToken,
@@ -51,7 +51,7 @@ instance ToJSON Tokens
 
 type ParamList = [(U8.ByteString, Maybe U8.ByteString)]
 
-type AccessTokenRespE = Either TokenRequestError OAuth2Token
+type AccessTokenRespE = Either TokenResponseError OAuth2Token
 
 toParamList :: [(String, String)] -> ParamList
 toParamList = P.map (\(k, v) -> (U8.fromString k, Just $ U8.fromString v))
@@ -79,7 +79,7 @@ fetchOAuth2AccessToken oauth2 authCode = do
   let textAuthCode = convertString authCode
   manager <- newManager tlsManagerSettings
   resp <- runExceptT (fetchAccessToken manager oauth2 ExchangeToken { extoken = textAuthCode })
-  return (responseToTokens resp)
+  return $ responseToTokens resp
 
 refreshOAuth2AccessToken :: OAuth2 -> U8.ByteString -> IO Tokens
 refreshOAuth2AccessToken oauth2 refreshToken = do
