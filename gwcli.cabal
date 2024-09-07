@@ -1,13 +1,13 @@
 cabal-version: 2.4
 
 name:           gwcli
-version:        0.9.4.0
+version:        0.9.5.0
 description:    Please see the README on GitHub at <https://github.com/diskshima/gwcli-hs#readme>
 homepage:       https://github.com/diskshima/gwcli-hs
 bug-reports:    https://github.com/diskshima/gwcli-hs/issues
 author:         Daisuke Shimamoto
 maintainer:     diskshima@gmail.com
-copyright:      2023 Daisuke Shimamoto
+copyright:      2024 Daisuke Shimamoto
 license:        MIT
 license-file:   LICENSE
 build-type:     Simple
