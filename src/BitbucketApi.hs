@@ -107,9 +107,9 @@ buildBitbucketKey = do
         Just clientSecret -> return $ bitbucketKey clientId clientSecret
 
 extractAuthCode :: [QueryItem] -> U8.ByteString
-extractAuthCode queryItems = do
-  let mbAuthCode = (snd . P.head) $ P.filter (\i -> fst i == U8.fromString "code") queryItems
-  fromMaybe (P.error "Could not find authorization code") mbAuthCode
+extractAuthCode queryItems = maybe errorMsg P.id $ lookup "code" queryItems >>= P.id
+  where
+    errorMsg = P.error "Failed to extract auth code."
 
 authenticate :: IO Tokens
 authenticate = do
