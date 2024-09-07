@@ -125,15 +125,18 @@ paramsToPullRequest opts = do
     PullRequestCreateOptions { prcoTitle = title, prcoBase = base, prcoBody = body } = opts
 
 handleIssue :: Remote -> [String] -> IO ()
-handleIssue remote params
-  | ssc `isPrefixOf` "show" = getIssue remote (head rest) >>= (putStrLn . I.formatIssue)
+handleIssue _ [] = printError "Please specify subcommand"
+handleIssue remote (ssc:params)
+  | ssc `isPrefixOf` "show" = case params of
+      [] -> printError "Please specify issue number"
+      (issueNum:_) -> getIssue remote issueNum >>= (putStrLn . I.formatIssue)
   | ssc `isPrefixOf` "list" = do
-    let (parsed, _, _) = getOpt RequireOrder issueListOptions rest
+    let (parsed, _, _) = getOpt RequireOrder issueListOptions params
         IssueListOptions { iOptAll = showAll } = foldl (flip id) defaultIssueListOptions parsed
     issues <- listIssues remote showAll
     putStrLn $ formatEachAndJoin issues I.formatIssue
   | ssc `isPrefixOf` "create" = do
-      let (parsed, _, _) = getOpt RequireOrder issueCreateOptions rest
+      let (parsed, _, _) = getOpt RequireOrder issueCreateOptions params
       template <- addEmptyTitle <$> readIssueTemplate remote
       cParams <- case parsed of
                    [] -> issueFromEditor template
@@ -141,8 +144,6 @@ handleIssue remote params
       response <- createIssue remote (paramsToIssue cParams)
       putStrLn $ I.formatIssue response
   | otherwise = printError $ "Subcommand " ++ ssc ++ " not supported"
-    where ssc = head params
-          rest = tail params
 
 populateMissingPrco :: PullRequestCreateOptions -> Remote -> IO PullRequestCreateOptions
 populateMissingPrco PullRequestCreateOptions{ prcoBase=base, prcoTitle=title, prcoBody=body } remote = do
@@ -151,24 +152,25 @@ populateMissingPrco PullRequestCreateOptions{ prcoBase=base, prcoTitle=title, pr
   return $ PullRequestCreateOptions { prcoBase=newBase, prcoTitle=newTitle, prcoBody=newBody }
 
 handlePullRequest :: Remote -> [String] -> IO ()
-handlePullRequest remote params
-  | ssc `isPrefixOf` "show" = getPullRequest remote (head rest) >>= (putStrLn . PR.formatPullRequest)
+handlePullRequest _ [] = printError "Please specify subcommand"
+handlePullRequest remote (ssc:params)
+  | ssc `isPrefixOf` "show" = case params of
+      [] -> printError "Please specify pull request number"
+      (prNum:_) -> getPullRequest remote prNum >>= (putStrLn . PR.formatPullRequest)
   | ssc `isPrefixOf` "list" = do
-      let (parsed, _, _) = getOpt RequireOrder pullRequestListOptions rest
+      let (parsed, _, _) = getOpt RequireOrder pullRequestListOptions params
           PullRequestListOptions { prOptAll = showAll } =
             foldl (flip id) defaultPullRequestListOptions parsed
       prs <- listPullRequests remote showAll
       putStrLn $ formatEachAndJoin prs PR.formatPullRequest
   | ssc `isPrefixOf` "create" = do
-      let (parsed, _, _) = getOpt RequireOrder pullRequestCreateOptions rest
+      let (parsed, _, _) = getOpt RequireOrder pullRequestCreateOptions params
       let tmpPrco = foldl (flip id) defaultPullRequestCreateOptions parsed
       prco <- populateMissingPrco tmpPrco remote
       pr <- paramsToPullRequest prco
       response <- createPullRequest remote pr
       putStrLn $ PR.formatPullRequest response
   | otherwise = printError $ "Command " ++ ssc ++ " not supported"
-    where ssc = head params
-          rest = tail params
 
 determineBaseBranch :: Remote -> String -> IO Branch
 determineBaseBranch remote "" = do

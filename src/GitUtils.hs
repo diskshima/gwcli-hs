@@ -12,7 +12,7 @@ import           Data.Git            (refNameRaw)
 import           Data.Git.Named      (looseRemotesList)
 import           Data.Git.Repository (configGet, headGet)
 import           Data.Git.Storage    (findRepoMaybe, openRepo, withCurrentRepo)
-import           Data.List           (isPrefixOf, isSuffixOf)
+import           Data.List           (isPrefixOf)
 import           ListUtils           (replace)
 import           Network.URI         (parseURI, pathSegments)
 import           Text.Printf         (printf)
@@ -47,9 +47,9 @@ dropDotGit :: String -> String
 dropDotGit = reverse . drop 4 . reverse
 
 segmentsToRepoInfo :: [String] -> RepoInfo
-segmentsToRepoInfo segs = RepoInfo (head segs) repoName
-  where second = segs !! 1
-        repoName = if ".git" `isSuffixOf` second then dropDotGit second else second
+segmentsToRepoInfo segments = RepoInfo org repo
+  where org = segments !! 1
+        repo = dropDotGit $ segments !! 2
 
 toFullSshUrl :: String -> String
 toFullSshUrl str =
