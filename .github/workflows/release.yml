@@ -15,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download build artifact (macOS x86)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: gwcli_macos_x86
           path: macos_x86
       - name: Download build artifact (Linux)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: gwcli_linux
           path: linux
