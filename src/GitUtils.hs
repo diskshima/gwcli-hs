@@ -46,10 +46,11 @@ remoteSection = printf "remote \"%s\""
 dropDotGit :: String -> String
 dropDotGit = reverse . drop 4 . reverse
 
-segmentsToRepoInfo :: [String] -> RepoInfo
-segmentsToRepoInfo segments = RepoInfo org repo
-  where org = segments !! 1
-        repo = dropDotGit $ segments !! 2
+segmentsToRepoInfo :: [String] -> Maybe RepoInfo
+segmentsToRepoInfo segments =
+  if length segments >= 2
+    then Just $ RepoInfo (segments !! 0) (dropDotGit $ segments !! 1)
+    else Nothing
 
 toFullSshUrl :: String -> String
 toFullSshUrl str =
@@ -60,7 +61,7 @@ toFullSshUrl str =
 urlToRepoInfo :: String -> Maybe RepoInfo
 urlToRepoInfo url = do
   uri <- parseURI $ toFullSshUrl url
-  return $ (segmentsToRepoInfo . pathSegments) uri
+  segmentsToRepoInfo $ pathSegments uri
 
 listRemoteBranches :: IO [Branch]
 listRemoteBranches = do
