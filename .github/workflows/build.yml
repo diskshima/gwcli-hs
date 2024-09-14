@@ -53,11 +53,11 @@ jobs:
       - name: Output binary path
         id: output_cabal
         run: echo "local_bin=$(cabal list-bin gwcli)" >> "$GITHUB_OUTPUT"
-      - name: Upload binary (macOS x86)
+      - name: Upload binary (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
         uses: actions/upload-artifact@v4
         with:
-          name: gwcli_macos_x86
+          name: gwcli_macos
           path: ${{ steps.output_cabal.outputs.local_bin }}
       - name: Upload binary (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}

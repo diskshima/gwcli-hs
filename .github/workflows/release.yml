@@ -14,11 +14,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download build artifact (macOS x86)
+      - name: Download build artifact (macOS)
         uses: actions/download-artifact@v4
         with:
-          name: gwcli_macos_x86
-          path: macos_x86
+          name: gwcli_macos
+          path: macos
       - name: Download build artifact (Linux)
         uses: actions/download-artifact@v4
         with:
@@ -26,12 +26,12 @@ jobs:
           path: linux
       - name: Copy and rename artifacts
         run: |
-          cp macos_x86/gwcli gwcli_macos_x86
+          cp macos/gwcli gwcli_macos
           cp linux/gwcli gwcli_linux
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
           fail_on_unmatched_files: true
           files: |
-            gwcli_macos_x86
+            gwcli_macos
             gwcli_linux
