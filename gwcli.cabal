@@ -27,6 +27,7 @@ executable gwcli
       Bitbucket.PullRequest
       Bitbucket.Utils
       BitbucketApi
+      CommandLineParser
       CredentialUtils
       GitHub.Issue
       GitHub.PullRequest
