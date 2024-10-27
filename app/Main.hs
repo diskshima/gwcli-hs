@@ -3,7 +3,19 @@
 
 module Main where
 
-import           CommandLineParser       (parseCommandLine, Flag(..), IssueListOptions(..), IssueCreateOptions(..), PullRequestListOptions(..), PullRequestCreateOptions(..))
+import           CommandLineParser       (parseCommandLine,
+                                          IssueListOptions(..),
+                                          IssueCreateOptions(..),
+                                          PullRequestListOptions(..),
+                                          PullRequestCreateOptions(..),
+                                          defaultIssueListOptions,
+                                          defaultIssueCreateOptions,
+                                          defaultPullRequestListOptions,
+                                          defaultPullRequestCreateOptions,
+                                          issueListOptions,
+                                          issueCreateOptions,
+                                          pullRequestListOptions,
+                                          pullRequestCreateOptions)
 import           CredentialUtils         (Credentials (..), credFilePath,
                                           readCredential, writeCredential)
 import           Data.List               (isInfixOf, isPrefixOf, uncons)
@@ -21,7 +33,9 @@ import           Remote                  (authenticate, createIssue,
                                           readIssueTemplate, readPRTemplate)
 import           RemoteTypes             (Remote (..))
 import qualified RemoteTypes             as R
-import           System.Console.GetOpt   (getOpt, usageInfo)
+import           System.Console.GetOpt   (ArgOrder(RequireOrder),
+                                          ArgDescr(NoArg), OptDescr(Option),
+                                          getOpt)
 import           System.Directory        (removeFile)
 import           System.Environment      (getArgs)
 import           Text.RawString.QQ
@@ -206,6 +220,5 @@ main = do
     Nothing -> printError "Failed to read credentials file."
     Just c -> do
       remote <- chooseRemote c
-      let (flags, subcommandArgs) = parseCommandLine args
+      let (_, subcommandArgs) = parseCommandLine args
       dispatchSubcommand subcommandArgs remote c credFP
-      where header = "Usage: gwcli subcommand"

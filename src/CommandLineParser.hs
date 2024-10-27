@@ -5,9 +5,18 @@ module CommandLineParser
   , IssueCreateOptions(..)
   , PullRequestListOptions(..)
   , PullRequestCreateOptions(..)
+  , defaultIssueListOptions
+  , defaultIssueCreateOptions
+  , defaultPullRequestListOptions
+  , defaultPullRequestCreateOptions
+  , issueListOptions
+  , issueCreateOptions
+  , pullRequestListOptions
+  , pullRequestCreateOptions
   ) where
 
-import System.Console.GetOpt (ArgDescr(..), ArgOrder(RequireOrder), OptDescr(..), getOpt, usageInfo)
+import System.Console.GetOpt (ArgDescr(..), ArgOrder(RequireOrder),
+                              OptDescr(..), getOpt, usageInfo)
 
 data Flag = Help | Verbose | Version
 
