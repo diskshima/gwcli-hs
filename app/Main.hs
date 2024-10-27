@@ -3,67 +3,31 @@
 
 module Main where
 
-import           CredentialUtils       (Credentials (..), credFilePath,
-                                        readCredential, writeCredential)
-import           Data.List             (isInfixOf, isPrefixOf, uncons)
-import           Data.Maybe            (fromMaybe, listToMaybe)
-import           Data.Version          (showVersion)
-import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl,
-                                        listRemoteBranches)
-import           ListUtils             (firstMatching, formatEachAndJoin)
-import           Opener                (openEditorWithTempFile)
-import           Paths_gwcli           (version)
-import           Remote                (authenticate, createIssue,
-                                        createPullRequest, defaultBranch,
-                                        getIssue, getPullRequest, listIssues,
-                                        listPullRequests, open, parseMessage,
-                                        readIssueTemplate, readPRTemplate)
-import           RemoteTypes           (Remote (..))
-import qualified RemoteTypes           as R
-import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
-                                        OptDescr (..), getOpt, usageInfo)
-import           System.Directory      (removeFile)
-import           System.Environment    (getArgs)
+import           CommandLineParser       (parseCommandLine, Flag(..), IssueListOptions(..), IssueCreateOptions(..), PullRequestListOptions(..), PullRequestCreateOptions(..))
+import           CredentialUtils         (Credentials (..), credFilePath,
+                                          readCredential, writeCredential)
+import           Data.List               (isInfixOf, isPrefixOf, uncons)
+import           Data.Maybe              (fromMaybe, listToMaybe)
+import           Data.Version            (showVersion)
+import           GitUtils                (Branch, getCurrentBranch, getRemoteUrl,
+                                          listRemoteBranches)
+import           ListUtils               (firstMatching, formatEachAndJoin)
+import           Opener                  (openEditorWithTempFile)
+import           Paths_gwcli             (version)
+import           Remote                  (authenticate, createIssue,
+                                          createPullRequest, defaultBranch,
+                                          getIssue, getPullRequest, listIssues,
+                                          listPullRequests, open, parseMessage,
+                                          readIssueTemplate, readPRTemplate)
+import           RemoteTypes             (Remote (..))
+import qualified RemoteTypes             as R
+import           System.Console.GetOpt   (getOpt, usageInfo)
+import           System.Directory        (removeFile)
+import           System.Environment      (getArgs)
 import           Text.RawString.QQ
-import qualified Types.Issue           as I
-import qualified Types.PullRequest     as PR
-import           WebUtils              as WU
-
-data Flag = Help | Verbose | Version
-
-options :: [OptDescr Flag]
-options =
-  [ Option ['v']["verbose"] (NoArg Verbose) "Verbose output"
-  , Option ['h']["help"] (NoArg Help) "Help"
-  ]
-
-newtype IssueListOptions = IssueListOptions { iOptAll :: Bool }
-
-defaultIssueListOptions :: IssueListOptions
-defaultIssueListOptions = IssueListOptions { iOptAll = False }
-
-issueListOptions :: [OptDescr (IssueListOptions -> IssueListOptions)]
-issueListOptions =
-  [ Option ['a']["all"]
-      (NoArg (\opts -> opts { iOptAll = True }))
-       "show all issues"
-  ]
-
-data IssueCreateOptions =
-  IssueCreateOptions { iscoTitle :: String, iscoBody :: String }
-
-defaultIssueCreateOptions :: IssueCreateOptions
-defaultIssueCreateOptions = IssueCreateOptions { iscoTitle = "", iscoBody = "" }
-
-issueCreateOptions :: [OptDescr (IssueCreateOptions -> IssueCreateOptions)]
-issueCreateOptions =
-  [ Option ['t'] ["title"]
-      (ReqArg (\title opts -> opts { iscoTitle = title }) "TITLE")
-      "Issue title"
-  , Option ['m'] ["message"]
-      (ReqArg (\msg opts -> opts { iscoBody = msg }) "BODY")
-      "Issue message (body)"
-  ]
+import qualified Types.Issue             as I
+import qualified Types.PullRequest       as PR
+import           WebUtils                as WU
 
 issueFromEditor :: String -> IO IssueCreateOptions
 issueFromEditor template = do
@@ -72,38 +36,6 @@ issueFromEditor template = do
   removeFile fp
   let msg = parseMessage content
   return IssueCreateOptions { iscoTitle = R.title msg, iscoBody = R.body msg }
-
-newtype PullRequestListOptions = PullRequestListOptions { prOptAll :: Bool }
-
-defaultPullRequestListOptions :: PullRequestListOptions
-defaultPullRequestListOptions = PullRequestListOptions { prOptAll = False }
-
-pullRequestListOptions :: [OptDescr (PullRequestListOptions -> PullRequestListOptions)]
-pullRequestListOptions =
-  [ Option ['a']["all"]
-      (NoArg (\opts -> opts { prOptAll = True }))
-       "show all pull requests"
-  ]
-
-data PullRequestCreateOptions =
-  PullRequestCreateOptions { prcoBase :: String , prcoTitle :: String, prcoBody :: String }
-
-defaultPullRequestCreateOptions :: PullRequestCreateOptions
-defaultPullRequestCreateOptions =
-  PullRequestCreateOptions { prcoBase = "", prcoTitle = "", prcoBody = "" }
-
-pullRequestCreateOptions :: [OptDescr (PullRequestCreateOptions -> PullRequestCreateOptions)]
-pullRequestCreateOptions =
-  [ Option ['t'] ["title"]
-      (ReqArg (\title opts -> opts { prcoTitle = title }) "TITLE")
-      "Pull request title"
-  , Option ['b'] ["base"]
-      (ReqArg (\base opts -> opts { prcoBase = base }) "BRANCH")
-      "Base (destination) branch"
-  , Option ['m'] ["message"]
-      (ReqArg (\msg opts -> opts { prcoBody = msg }) "BODY")
-      "Pull request message (body)"
-  ]
 
 candidateBaseBranches :: [Branch]
 candidateBaseBranches = ["develop", "main", "master"]
@@ -274,7 +206,6 @@ main = do
     Nothing -> printError "Failed to read credentials file."
     Just c -> do
       remote <- chooseRemote c
-      case getOpt RequireOrder options args of
-        (_, n, [])   -> dispatchSubcommand n remote c credFP
-        (_, _, errs) -> printError $ concat errs ++ usageInfo header options
+      let (flags, subcommandArgs) = parseCommandLine args
+      dispatchSubcommand subcommandArgs remote c credFP
       where header = "Usage: gwcli subcommand"
