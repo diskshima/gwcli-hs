@@ -18,7 +18,7 @@ import           CommandLineParser       (parseCommandLine,
                                           pullRequestCreateOptions)
 import           CredentialUtils         (Credentials (..), credFilePath,
                                           readCredential, writeCredential)
-import           Data.List               (isInfixOf, isPrefixOf, uncons)
+import           Data.List               (isInfixOf, isPrefixOf)
 import           Data.Maybe              (fromMaybe, listToMaybe)
 import           Data.Version            (showVersion)
 import           GitUtils                (Branch, getCurrentBranch, getRemoteUrl,
@@ -42,6 +42,59 @@ import           Text.RawString.QQ
 import qualified Types.Issue             as I
 import qualified Types.PullRequest       as PR
 import           WebUtils                as WU
+
+data SubCommand
+  = Auth
+  | Issue IssueSubCommand
+  | PullRequest PullRequestSubCommand
+  | Browse [String]
+  | Help
+  | Version
+  deriving (Show, Eq)
+
+data IssueSubCommand
+  = IssueShow String
+  | IssueList [String]
+  | IssueCreate [String]
+  deriving (Show, Eq)
+
+data PullRequestSubCommand
+  = PRShow String
+  | PRList [String]
+  | PRCreate [String]
+  deriving (Show, Eq)
+
+parseSubCommand :: [String] -> Either String SubCommand
+parseSubCommand [] = Left "Please specify subcommand"
+parseSubCommand (cmd:args) = case cmd of
+  "auth"        -> Right Auth
+  "issue"       -> parseIssueSubCommand args
+  "pr"          -> parsePRSubCommand args
+  "pullrequest" -> parsePRSubCommand args
+  "browse"      -> Right $ Browse args
+  "help"        -> Right Help
+  "version"     -> Right Version
+  _            -> Left $ "Unknown command: " ++ cmd
+
+parseIssueSubCommand :: [String] -> Either String SubCommand
+parseIssueSubCommand [] = Left "Please specify issue subcommand"
+parseIssueSubCommand (subcmd:args)
+  | subcmd `isPrefixOf` "show"   = case args of
+      [] -> Left "Please specify issue number"
+      (num:_) -> Right $ Issue $ IssueShow num
+  | subcmd `isPrefixOf` "list"   = Right $ Issue $ IssueList args
+  | subcmd `isPrefixOf` "create" = Right $ Issue $ IssueCreate args
+  | otherwise = Left $ "Unknown issue subcommand: " ++ subcmd
+
+parsePRSubCommand :: [String] -> Either String SubCommand
+parsePRSubCommand [] = Left "Please specify pull request subcommand"
+parsePRSubCommand (subcmd:args)
+  | subcmd `isPrefixOf` "show"   = case args of
+      [] -> Left "Please specify pull request number"
+      (num:_) -> Right $ PullRequest $ PRShow num
+  | subcmd `isPrefixOf` "list"   = Right $ PullRequest $ PRList args
+  | subcmd `isPrefixOf` "create" = Right $ PullRequest $ PRCreate args
+  | otherwise = Left $ "Unknown pull request subcommand: " ++ subcmd
 
 issueFromEditor :: String -> IO IssueCreateOptions
 issueFromEditor template = do
@@ -198,18 +251,22 @@ handleShowVersion :: IO ()
 handleShowVersion = putStrLn ("gwcli " ++ showVersion version)
 
 dispatchSubcommand :: [String] -> Remote -> Credentials -> FilePath -> IO ()
-dispatchSubcommand opts remote c credFP =
-  case uncons opts of
-    Nothing         -> printError "Please specify subcommand"
-    Just (sc, rest) -> handler
-      where handler
-              | sc `isPrefixOf` "auth"     = handleAuth remote c credFP
-              | sc `isPrefixOf` "issue"    = handleIssue remote rest
-              | isPullRequestSubCommand sc = handlePullRequest remote rest
-              | sc `isPrefixOf` "browse"   = handleBrowse remote rest
-              | sc `isPrefixOf` "help"     = handleHelp
-              | sc `isPrefixOf` "version"  = handleShowVersion
-              | otherwise                  = printError "Please specify subcommand"
+dispatchSubcommand opts remote c credFP = 
+  case parseSubCommand opts of
+    Left err -> printError err
+    Right cmd -> case cmd of
+      Auth -> handleAuth remote c credFP
+      Issue subcmd -> case subcmd of
+        IssueShow num -> getIssue remote num >>= (putStrLn . I.formatIssue)
+        IssueList args -> handleIssue remote ("list":args)
+        IssueCreate args -> handleIssue remote ("create":args)
+      PullRequest subcmd -> case subcmd of
+        PRShow num -> getPullRequest remote num >>= (putStrLn . PR.formatPullRequest)
+        PRList args -> handlePullRequest remote ("list":args)
+        PRCreate args -> handlePullRequest remote ("create":args)
+      Browse args -> handleBrowse remote args
+      Help -> handleHelp
+      Version -> handleShowVersion
 
 main :: IO ()
 main = do
