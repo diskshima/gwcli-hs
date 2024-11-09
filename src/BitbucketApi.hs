@@ -15,49 +15,49 @@ module BitbucketApi
   , readPRTemplate
   ) where
 
-import           Bitbucket.Common              as BC
-import           Bitbucket.Issue               as BI (Issue (..),
-                                                      IssueContent (..),
-                                                      Issues (..))
-import           Bitbucket.Issue               as BIP (IssuePost (..))
-import           Bitbucket.PullRequest         as BP (BranchDetails (..),
-                                                      PullRequest (..),
-                                                      PullRequestBranch (..),
-                                                      PullRequests (..))
-import           Bitbucket.PullRequest         as BPP (PullRequestPost (..))
-import           Control.Lens                  ((^.))
-import           Control.Lens.Operators        ((.~))
-import           CredentialUtils               (Credentials (..), credFilePath,
-                                                readCredential, writeCredential)
-import           Data.Aeson                    (FromJSON, ToJSON (..))
-import           Data.ByteString.Builder       (toLazyByteString)
-import qualified Data.ByteString.Lazy          as BL
-import           Data.ByteString.Lazy.Char8    as BL8
-import qualified Data.ByteString.UTF8          as U8
-import           Data.Function                 ((&))
-import           Data.Maybe                    (fromMaybe)
-import           Data.String.Conversions       (convertString)
-import           Data.Text.Lazy                as TL
-import           GitUtils                      (RepoInfo (..), repoInfoFromRepo)
-import           JsonUtils                     (decodeResponse,
-                                                decodeResponseOrError)
-import           Network.HTTP.Types.URI        (QueryItem, renderQuery)
-import           Network.OAuth.OAuth2          (OAuth2 (..), authorizationUrl)
-import           Network.Wreq                  (Options, Response, defaults,
-                                                getWith, header, postWith,
-                                                responseStatus, statusCode)
-import           Network.Wreq.Types            (Postable)
-import           Prelude                       as P
-import           System.Environment            (lookupEnv)
-import           Text.Printf                   (printf)
-import qualified Types.Issue                   as I
-import qualified Types.PullRequest             as PR
-import           URI.ByteString                (serializeURIRef)
+import           Bitbucket.Common           as BC
+import           Bitbucket.Issue            as BI (Issue (..),
+                                                   IssueContent (..),
+                                                   Issues (..))
+import           Bitbucket.Issue            as BIP (IssuePost (..))
+import           Bitbucket.PullRequest      as BP (BranchDetails (..),
+                                                   PullRequest (..),
+                                                   PullRequestBranch (..),
+                                                   PullRequests (..))
+import           Bitbucket.PullRequest      as BPP (PullRequestPost (..))
+import           Control.Lens               ((^.))
+import           Control.Lens.Operators     ((.~))
+import           CredentialUtils            (Credentials (..), credFilePath,
+                                             readCredential, writeCredential)
+import           Data.Aeson                 (FromJSON, ToJSON (..))
+import           Data.ByteString.Builder    (toLazyByteString)
+import qualified Data.ByteString.Lazy       as BL
+import           Data.ByteString.Lazy.Char8 as BL8
+import qualified Data.ByteString.UTF8       as U8
+import           Data.Function              ((&))
+import           Data.Maybe                 (fromMaybe)
+import           Data.String.Conversions    (convertString)
+import           Data.Text.Lazy             as TL
+import           GitUtils                   (RepoInfo (..), repoInfoFromRepo)
+import           JsonUtils                  (decodeResponse,
+                                             decodeResponseOrError)
+import           Network.HTTP.Types.URI     (QueryItem, renderQuery)
+import           Network.OAuth.OAuth2       (OAuth2 (..), authorizationUrl)
+import           Network.Wreq               (Options, Response, defaults,
+                                             getWith, header, postWith,
+                                             responseStatus, statusCode)
+import           Network.Wreq.Types         (Postable)
+import           Prelude                    as P
+import           System.Environment         (lookupEnv)
+import           Text.Printf                (printf)
+import qualified Types.Issue                as I
+import qualified Types.PullRequest          as PR
+import           URI.ByteString             (serializeURIRef)
 import           URI.ByteString.QQ
-import           WebUtils                      (ParamList, Token, Tokens (..),
-                                                fetchOAuth2AccessToken,
-                                                receiveWebRequest,
-                                                refreshOAuth2AccessToken)
+import           WebUtils                   (ParamList, Token, Tokens (..),
+                                             fetchOAuth2AccessToken,
+                                             receiveWebRequest,
+                                             refreshOAuth2AccessToken)
 
 urlFromIssue :: BI.Issue -> String
 urlFromIssue = maybe "" BC.href . BC.html . BI.links

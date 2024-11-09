@@ -3,45 +3,44 @@
 
 module Main where
 
-import           CommandLineParser       (parseCommandLine,
-                                          IssueListOptions(..),
-                                          IssueCreateOptions(..),
-                                          PullRequestListOptions(..),
-                                          PullRequestCreateOptions(..),
-                                          defaultIssueListOptions,
-                                          defaultIssueCreateOptions,
-                                          defaultPullRequestListOptions,
-                                          defaultPullRequestCreateOptions,
-                                          issueListOptions,
-                                          issueCreateOptions,
-                                          pullRequestListOptions,
-                                          pullRequestCreateOptions)
-import           CredentialUtils         (Credentials (..), credFilePath,
-                                          readCredential, writeCredential)
-import           Data.List               (isInfixOf, isPrefixOf, uncons)
-import           Data.Maybe              (fromMaybe, listToMaybe)
-import           Data.Version            (showVersion)
-import           GitUtils                (Branch, getCurrentBranch, getRemoteUrl,
-                                          listRemoteBranches)
-import           ListUtils               (firstMatching, formatEachAndJoin)
-import           Opener                  (openEditorWithTempFile)
-import           Paths_gwcli             (version)
-import           Remote                  (authenticate, createIssue,
-                                          createPullRequest, defaultBranch,
-                                          getIssue, getPullRequest, listIssues,
-                                          listPullRequests, open, parseMessage,
-                                          readIssueTemplate, readPRTemplate)
-import           RemoteTypes             (Remote (..))
-import qualified RemoteTypes             as R
-import           System.Console.GetOpt   (ArgOrder(RequireOrder),
-                                          ArgDescr(NoArg), OptDescr(Option),
-                                          getOpt)
-import           System.Directory        (removeFile)
-import           System.Environment      (getArgs)
+import           CommandLineParser     (IssueCreateOptions (..),
+                                        IssueListOptions (..),
+                                        PullRequestCreateOptions (..),
+                                        PullRequestListOptions (..),
+                                        defaultIssueCreateOptions,
+                                        defaultIssueListOptions,
+                                        defaultPullRequestCreateOptions,
+                                        defaultPullRequestListOptions,
+                                        issueCreateOptions, issueListOptions,
+                                        parseCommandLine,
+                                        pullRequestCreateOptions,
+                                        pullRequestListOptions)
+import           CredentialUtils       (Credentials (..), credFilePath,
+                                        readCredential, writeCredential)
+import           Data.List             (isInfixOf, isPrefixOf, uncons)
+import           Data.Maybe            (fromMaybe, listToMaybe)
+import           Data.Version          (showVersion)
+import           GitUtils              (Branch, getCurrentBranch, getRemoteUrl,
+                                        listRemoteBranches)
+import           ListUtils             (firstMatching, formatEachAndJoin)
+import           Opener                (openEditorWithTempFile)
+import           Paths_gwcli           (version)
+import           Remote                (authenticate, createIssue,
+                                        createPullRequest, defaultBranch,
+                                        getIssue, getPullRequest, listIssues,
+                                        listPullRequests, open, parseMessage,
+                                        readIssueTemplate, readPRTemplate)
+import           RemoteTypes           (Remote (..))
+import qualified RemoteTypes           as R
+import           System.Console.GetOpt (ArgDescr (NoArg),
+                                        ArgOrder (RequireOrder),
+                                        OptDescr (Option), getOpt)
+import           System.Directory      (removeFile)
+import           System.Environment    (getArgs)
 import           Text.RawString.QQ
-import qualified Types.Issue             as I
-import qualified Types.PullRequest       as PR
-import           WebUtils                as WU
+import qualified Types.Issue           as I
+import qualified Types.PullRequest     as PR
+import           WebUtils              as WU
 
 issueFromEditor :: String -> IO IssueCreateOptions
 issueFromEditor template = do
@@ -74,7 +73,7 @@ handleIssue :: Remote -> [String] -> IO ()
 handleIssue _ [] = printError "Please specify subcommand"
 handleIssue remote (ssc:params)
   | ssc `isPrefixOf` "show" = case params of
-      [] -> printError "Please specify issue number"
+      []           -> printError "Please specify issue number"
       (issueNum:_) -> getIssue remote issueNum >>= (putStrLn . I.formatIssue)
   | ssc `isPrefixOf` "list" = do
     let (parsed, _, _) = getOpt RequireOrder issueListOptions params

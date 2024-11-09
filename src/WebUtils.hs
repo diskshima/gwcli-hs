@@ -15,29 +15,25 @@ module WebUtils
   , toParamList
   ) where
 
-import           Control.Monad.Except              (runExceptT)
-import qualified Data.ByteString.UTF8              as U8
-import           Data.String.Conversions           (convertString)
-import           Data.Yaml                         (FromJSON, ToJSON)
-import           GHC.Generics                      (Generic)
-import           Network.HTTP                      (Request (..), Response (..),
-                                                    close, receiveHTTP,
-                                                    respondHTTP,
-                                                    socketConnection)
-import           Network.HTTP.Conduit              (newManager,
-                                                    tlsManagerSettings)
-import           Network.HTTP.Types.URI            (QueryItem, parseQuery)
-import           Network.OAuth.OAuth2              (ExchangeToken (..),
-                                                    OAuth2 (..), OAuth2Token,
-                                                    RefreshToken (..),
-                                                    TokenResponseError,
-                                                    accessToken, atoken,
-                                                    fetchAccessToken,
-                                                    refreshAccessToken,
-                                                    refreshToken, rtoken)
+import           Control.Monad.Except    (runExceptT)
+import qualified Data.ByteString.UTF8    as U8
+import           Data.String.Conversions (convertString)
+import           Data.Yaml               (FromJSON, ToJSON)
+import           GHC.Generics            (Generic)
+import           Network.HTTP            (Request (..), Response (..), close,
+                                          receiveHTTP, respondHTTP,
+                                          socketConnection)
+import           Network.HTTP.Conduit    (newManager, tlsManagerSettings)
+import           Network.HTTP.Types.URI  (QueryItem, parseQuery)
+import           Network.OAuth.OAuth2    (ExchangeToken (..), OAuth2 (..),
+                                          OAuth2Token, RefreshToken (..),
+                                          TokenResponseError, accessToken,
+                                          atoken, fetchAccessToken,
+                                          refreshAccessToken, refreshToken,
+                                          rtoken)
 import           Network.Socket
 import           Network.URI
-import           Prelude                           as P
+import           Prelude                 as P
 
 type Token = String
 
