@@ -64,17 +64,19 @@ data PullRequestSubCommand
   | PRCreate [String]
   deriving (Show, Eq)
 
+isPullRequestSubCommand :: String -> Bool
+isPullRequestSubCommand cmd = cmd `isPrefixOf` "pullrequest" || cmd == "pr"
+
 parseSubCommand :: [String] -> Either String SubCommand
 parseSubCommand [] = Left "Please specify subcommand"
-parseSubCommand (cmd:args) = case cmd of
-  "auth"        -> Right Auth
-  "issue"       -> parseIssueSubCommand args
-  "pr"          -> parsePRSubCommand args
-  "pullrequest" -> parsePRSubCommand args
-  "browse"      -> Right $ Browse args
-  "help"        -> Right Help
-  "version"     -> Right Version
-  _            -> Left $ "Unknown command: " ++ cmd
+parseSubCommand (cmd:args)
+  | cmd `isPrefixOf` "auth"     = Right Auth
+  | cmd `isPrefixOf` "browse"   = Right $ Browse args
+  | cmd `isPrefixOf` "help"     = Right Help
+  | cmd `isPrefixOf` "issue"    = parseIssueSubCommand args
+  | cmd `isPrefixOf` "version"  = Right Version
+  | isPullRequestSubCommand cmd = parsePRSubCommand args
+  | otherwise                   = Left $ "Unknown command: " ++ cmd
 
 parseIssueSubCommand :: [String] -> Either String SubCommand
 parseIssueSubCommand [] = Left "Please specify issue subcommand"
@@ -223,9 +225,6 @@ pullrequest create|show|list
 browse
 help
 |]
-
-isPullRequestSubCommand :: String -> Bool
-isPullRequestSubCommand cmd = isPrefixOf "pullrequest" cmd || cmd == "pr"
 
 newtype BrowseOptions = BrowseOptions { brOpenBrowser :: Bool }
 
