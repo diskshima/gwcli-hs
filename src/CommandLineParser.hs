@@ -15,8 +15,8 @@ module CommandLineParser
   , pullRequestCreateOptions
   ) where
 
-import System.Console.GetOpt (ArgDescr(..), ArgOrder(RequireOrder),
-                              OptDescr(..), getOpt, usageInfo)
+import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
+                                        OptDescr (..), getOpt, usageInfo)
 
 data Flag = Help | Verbose | Version
 
@@ -89,6 +89,6 @@ pullRequestCreateOptions =
 parseCommandLine :: [String] -> ([Flag], [String])
 parseCommandLine args =
   case getOpt RequireOrder options args of
-    (opts, n, [])   -> (opts, n)
-    (_, _, errs) -> error $ concat errs ++ usageInfo header options
+    (opts, n, []) -> (opts, n)
+    (_, _, errs)  -> error $ concat errs ++ usageInfo header options
   where header = "Usage: gwcli subcommand"
