@@ -67,11 +67,11 @@ urlFromPullRequest  = maybe "" BC.href . BC.html . BP.links
 
 responseToIssue :: Issue -> I.Issue
 responseToIssue i =
-  I.Issue (Just . show $ BI.id i) (BI.title i) Nothing (Just $ urlFromIssue i)
+  I.Issue (Just . P.show $ BI.id i) (BI.title i) Nothing (Just $ urlFromIssue i)
 
 responseToPullRequest :: PullRequest -> PR.PullRequest
 responseToPullRequest pr =
-  PR.PullRequest (Just . show $ BP.id pr) (BP.title pr)
+  PR.PullRequest (Just . P.show $ BP.id pr) (BP.title pr)
                  "" "" Nothing (Just htmlLink)
                    where htmlLink = urlFromPullRequest pr
 
