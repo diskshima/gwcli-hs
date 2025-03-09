@@ -26,7 +26,7 @@ jobs:
       - uses: haskell-actions/setup@v2
         id: setup
         with:
-          ghc-version: '9.10.1'
+          ghc-version: '9.12.1'
           cabal-version: '3.12.1.0'
       - name: Generate build plan
         run: cabal build all --dry-run
