@@ -27,7 +27,7 @@ jobs:
         id: setup
         with:
           ghc-version: '9.12.1'
-          cabal-version: '3.12.1.0'
+          cabal-version: '3.14.1.1'
       - name: Generate build plan
         run: cabal build all --dry-run
       - name: Restore cached dependencies
