@@ -1,157 +1,226 @@
-module CommandLineParser
-  ( parseCommandLine
-  , Flag(..)
-  , IssueListOptions(..)
-  , IssueCreateOptions(..)
-  , PullRequestListOptions(..)
-  , PullRequestCreateOptions(..)
-  , BrowseOptions(..) -- Added BrowseOptions
-  , defaultIssueListOptions
-  , defaultIssueCreateOptions
-  , defaultPullRequestListOptions
-  , defaultPullRequestCreateOptions
-  , defaultBrowseOptions -- Added defaultBrowseOptions
-  , issueListOptions
-  , issueCreateOptions
-  , pullRequestListOptions
-  , pullRequestCreateOptions
-  , browseOptions -- Added browseOptions
-  , globalUsageInfo
-  , issueUsageHeader
-  , issueListUsageInfo
-  , issueCreateUsageInfo
-  , prUsageHeader
-  , prListUsageInfo
-  , prCreateUsageInfo
-  , browseUsageInfo
-  ) where
+module CommandLineParser (
+    Command(..),
+    AuthOptions(..),
+    BrowseOptionsCli(..),
+    IssueCommand(..),
+    PullRequestCommand(..),
+    VersionOptions(..),
+    GlobalOptions(..),
+    CliArguments(..),
+    parseCliArgs,
+    IssueListOptionsCli(..),
+    IssueCreateOptionsCli(..),
+    IssueShowOptions(..),
+    -- Export new types for PullRequest subcommand
+    PullRequestListOptionsCli(..),
+    PullRequestCreateOptionsCli(..),
+    PullRequestShowOptions(..)
+) where
 
-import           System.Console.GetOpt (ArgDescr (..), ArgOrder (RequireOrder),
-                                        OptDescr (..), getOpt, usageInfo)
--- import           Debug.Trace (trace) -- Removed debugging import
+import Options.Applicative
 
-data Flag = Help | Verbose | Version deriving (Show, Eq) -- Added deriving Eq for Flag
+-- Global options
+data GlobalOptions = GlobalOptions
+    { optVerbose :: Bool
+    } deriving (Show, Eq)
 
-options :: [OptDescr Flag]
-options =
-  [ Option ['v']["verbose"] (NoArg Verbose) "Verbose output"
-  , Option ['h']["help"] (NoArg Help) "Help"
-  ]
+globalOptionsParser :: Parser GlobalOptions
+globalOptionsParser = GlobalOptions
+    <$> switch
+        ( long "verbose"
+       <> short 'v'
+       <> help "Enable verbose output" )
 
--- Issue List Options
-data IssueListOptions = IssueListOptions { iOptAll :: Bool, ilOptShowHelp :: Bool } -- Changed newtype to data
+-- Define option types for each command
+data AuthOptions = AuthOptions deriving (Show, Eq)
+data BrowseOptionsCli = BrowseOptionsCli
+    { boUrl :: Maybe String
+    , boPrint :: Bool
+    } deriving (Show, Eq)
 
-defaultIssueListOptions :: IssueListOptions
-defaultIssueListOptions = IssueListOptions { iOptAll = False, ilOptShowHelp = False }
+-- IssueCommand and its options
+data IssueShowOptions = IssueShowOptions
+    { isoIssueNumber :: String
+    } deriving (Show, Eq)
 
-issueListOptions :: [OptDescr (IssueListOptions -> IssueListOptions)]
-issueListOptions =
-  [ Option ['a']["all"]
-      (NoArg (\opts -> opts { iOptAll = True }))
-       "show all issues"
-  , Option ['h'] ["help"] (NoArg (\opts -> opts { ilOptShowHelp = True })) "Show help for list issues"
-  ]
+data IssueListOptionsCli = IssueListOptionsCli
+    { iloAll :: Bool
+    } deriving (Show, Eq)
 
--- Issue Create Options
-data IssueCreateOptions =
-  IssueCreateOptions { iscoTitle :: String, iscoBody :: String, iscoShowHelp :: Bool }
+data IssueCreateOptionsCli = IssueCreateOptionsCli
+    { icoTitle :: String
+    , icoBody  :: String
+    } deriving (Show, Eq)
 
-defaultIssueCreateOptions :: IssueCreateOptions
-defaultIssueCreateOptions = IssueCreateOptions { iscoTitle = "", iscoBody = "", iscoShowHelp = False }
+data IssueCommand
+    = IssueList IssueListOptionsCli
+    | IssueCreate IssueCreateOptionsCli
+    | IssueShow IssueShowOptions
+    deriving (Show, Eq)
 
-issueCreateOptions :: [OptDescr (IssueCreateOptions -> IssueCreateOptions)]
-issueCreateOptions =
-  [ Option ['t'] ["title"]
-      (ReqArg (\title opts -> opts { iscoTitle = title }) "TITLE")
-      "Issue title"
-  , Option ['m'] ["message"]
-      (ReqArg (\msg opts -> opts { iscoBody = msg }) "BODY")
-      "Issue message (body)"
-  , Option ['h'] ["help"] (NoArg (\opts -> opts { iscoShowHelp = True })) "Show help for create issue"
-  ]
+-- PullRequestCommand and its options
+data PullRequestShowOptions = PullRequestShowOptions
+    { prsoPrNumber :: String
+    } deriving (Show, Eq)
 
--- Pull Request List Options
-data PullRequestListOptions = PullRequestListOptions { prOptAll :: Bool, prOptShowHelp :: Bool } -- Changed newtype to data
+data PullRequestListOptionsCli = PullRequestListOptionsCli
+    { prloAll :: Bool
+    } deriving (Show, Eq)
 
-defaultPullRequestListOptions :: PullRequestListOptions
-defaultPullRequestListOptions = PullRequestListOptions { prOptAll = False, prOptShowHelp = False }
+data PullRequestCreateOptionsCli = PullRequestCreateOptionsCli
+    { prcoTitle :: String
+    , prcoBody  :: String
+    , prcoBase  :: String  -- Base branch
+    } deriving (Show, Eq)
 
-pullRequestListOptions :: [OptDescr (PullRequestListOptions -> PullRequestListOptions)]
-pullRequestListOptions =
-  [ Option ['a']["all"]
-      (NoArg (\opts -> opts { prOptAll = True }))
-       "show all pull requests"
-  , Option ['h'] ["help"] (NoArg (\opts -> opts { prOptShowHelp = True })) "Show help for list pull requests"
-  ]
+data PullRequestCommand
+    = PullRequestList PullRequestListOptionsCli
+    | PullRequestCreate PullRequestCreateOptionsCli
+    | PullRequestShow PullRequestShowOptions
+    deriving (Show, Eq)
 
--- Pull Request Create Options
-data PullRequestCreateOptions =
-  PullRequestCreateOptions { prcoBase :: String , prcoTitle :: String, prcoBody :: String, prcoShowHelp :: Bool }
+data VersionOptions = VersionOptions deriving (Show, Eq)
 
-defaultPullRequestCreateOptions :: PullRequestCreateOptions
-defaultPullRequestCreateOptions =
-  PullRequestCreateOptions { prcoBase = "", prcoTitle = "", prcoBody = "", prcoShowHelp = False }
 
-pullRequestCreateOptions :: [OptDescr (PullRequestCreateOptions -> PullRequestCreateOptions)]
-pullRequestCreateOptions =
-  [ Option ['t'] ["title"]
-      (ReqArg (\title opts -> opts { prcoTitle = title }) "TITLE")
-      "Pull request title"
-  , Option ['b'] ["base"]
-      (ReqArg (\base opts -> opts { prcoBase = base }) "BRANCH")
-      "Base (destination) branch"
-  , Option ['m'] ["message"]
-      (ReqArg (\msg opts -> opts { prcoBody = msg }) "BODY")
-      "Pull request message (body)"
-  , Option ['h'] ["help"] (NoArg (\opts -> opts { prcoShowHelp = True })) "Show help for create pull request"
-  ]
+-- Top-level command sum type
+data Command
+    = AuthCmd AuthOptions
+    | BrowseCmd BrowseOptionsCli
+    | IssueCmd IssueCommand
+    | PullRequestCmd PullRequestCommand -- Updated
+    | VersionCmd VersionOptions
+    deriving (Show, Eq)
 
--- Browse Options
-data BrowseOptions = BrowseOptions { brOpenBrowser :: Bool, brShowHelp :: Bool } -- Changed newtype to data
+-- Parsers for individual command options (auth, browse, version, issue actions already exist)
+authOptionsParser :: Parser AuthOptions
+authOptionsParser = pure AuthOptions
 
-defaultBrowseOptions :: BrowseOptions
-defaultBrowseOptions = BrowseOptions { brOpenBrowser = True, brShowHelp = False }
+browseOptionsCliParser :: Parser BrowseOptionsCli
+browseOptionsCliParser = BrowseOptionsCli
+    <$> optional (argument str (metavar "PAGE" <> help "Page identifier (e.g., issue/PR number, specific path like 'pulls')"))
+    <*> switch
+        ( long "print"
+       <> short 'p'
+       <> help "Only print the URL, don't open in browser" )
 
-browseOptions :: [OptDescr (BrowseOptions -> BrowseOptions)]
-browseOptions =
-  [ Option ['p']["print"]
-      (NoArg (\opts -> opts { brOpenBrowser = False }))
-      "Only print the URL (instead of opening browser)."
-  , Option ['h'] ["help"] (NoArg (\opts -> opts { brShowHelp = True })) "Show help for browse"
-  ]
+versionOptionsParser :: Parser VersionOptions
+versionOptionsParser = pure VersionOptions
 
-parseCommandLine :: [String] -> ([Flag], [String])
-parseCommandLine args =
-  case getOpt RequireOrder options args of
-    (o, n, []) -> (o, n)
-    (_, _, errs) -> error $ concat errs ++ usageInfo header options
-  where header = "Usage: gwcli [GLOBAL OPTIONS] <subcommand> [SUBCOMMAND OPTIONS]"
+-- Parsers for issue actions
+issueShowOptionsParser :: Parser IssueShowOptions
+issueShowOptionsParser = IssueShowOptions
+    <$> argument str (metavar "ISSUE_NUMBER" <> help "Issue number to show")
 
--- Global options help
-globalUsageInfo :: String
-globalUsageInfo = usageInfo header options
-  where header = "Usage: gwcli [GLOBAL OPTIONS] <subcommand> [SUBCOMMAND OPTIONS]"
+issueListOptionsParser :: Parser IssueListOptionsCli
+issueListOptionsParser = IssueListOptionsCli
+    <$> switch
+        ( long "all"
+       <> short 'a'
+       <> help "Show all issues (including closed/resolved)" )
 
--- Issue subcommand help
-issueUsageHeader :: String
-issueUsageHeader = "Usage: gwcli issue <create|list|show> [OPTIONS]"
+issueCreateOptionsParser :: Parser IssueCreateOptionsCli
+issueCreateOptionsParser = IssueCreateOptionsCli
+    <$> strOption
+        ( long "title"
+       <> short 't'
+       <> metavar "TITLE"
+       <> help "Title of the issue" )
+    <*> strOption
+        ( long "message"
+       <> short 'm'
+       <> metavar "BODY"
+       <> help "Body/description of the issue" )
 
-issueListUsageInfo :: String
-issueListUsageInfo = usageInfo ("Usage: gwcli issue list [OPTIONS]") issueListOptions
+-- Parser for the issue subcommand and its actions
+issueCommandParser :: Parser IssueCommand
+issueCommandParser = subparser
+    ( command "list" (info (IssueList <$> issueListOptionsParser <**> helper)
+        (progDesc "List issues. Use --all to show all issues."))
+   <> command "create" (info (IssueCreate <$> issueCreateOptionsParser <**> helper)
+        (progDesc "Create a new issue."))
+   <> command "show" (info (IssueShow <$> issueShowOptionsParser <**> helper)
+        (progDesc "Show a specific issue by its number."))
+    )
 
-issueCreateUsageInfo :: String
-issueCreateUsageInfo = usageInfo ("Usage: gwcli issue create [OPTIONS]") issueCreateOptions
+-- Parsers for pull request actions
+pullRequestShowOptionsParser :: Parser PullRequestShowOptions
+pullRequestShowOptionsParser = PullRequestShowOptions
+    <$> argument str (metavar "PR_NUMBER" <> help "Pull request number to show")
 
--- Pull Request subcommand help
-prUsageHeader :: String
-prUsageHeader = "Usage: gwcli pullrequest <create|list|show> [OPTIONS]"
+pullRequestListOptionsParser :: Parser PullRequestListOptionsCli
+pullRequestListOptionsParser = PullRequestListOptionsCli
+    <$> switch
+        ( long "all"
+       <> short 'a'
+       <> help "Show all pull requests (including merged/closed)" )
 
-prListUsageInfo :: String
-prListUsageInfo = usageInfo ("Usage: gwcli pullrequest list [OPTIONS]") pullRequestListOptions
+pullRequestCreateOptionsParser :: Parser PullRequestCreateOptionsCli
+pullRequestCreateOptionsParser = PullRequestCreateOptionsCli
+    <$> strOption
+        ( long "title"
+       <> short 't'
+       <> metavar "TITLE"
+       <> help "Title of the pull request" )
+    <*> strOption
+        ( long "message" -- Or "body"
+       <> short 'm' -- Or 'd' for description
+       <> metavar "BODY"
+       <> help "Body/description of the pull request" )
+    <*> strOption
+        ( long "base"
+       <> short 'b'
+       <> metavar "TARGET_BRANCH"
+       <> help "Base (target) branch for the pull request" )
 
-prCreateUsageInfo :: String
-prCreateUsageInfo = usageInfo ("Usage: gwcli pullrequest create [OPTIONS]") pullRequestCreateOptions
+-- Parser for the pullrequest subcommand and its actions
+pullRequestCommandParser :: Parser PullRequestCommand
+pullRequestCommandParser = subparser
+    ( command "list" (info (PullRequestList <$> pullRequestListOptionsParser <**> helper)
+        (progDesc "List pull requests. Use --all to show all PRs."))
+   <> command "create" (info (PullRequestCreate <$> pullRequestCreateOptionsParser <**> helper)
+        (progDesc "Create a new pull request."))
+   <> command "show" (info (PullRequestShow <$> pullRequestShowOptionsParser <**> helper)
+        (progDesc "Show a specific pull request by its number."))
+    )
 
--- Browse subcommand help
-browseUsageInfo :: String
-browseUsageInfo = usageInfo ("Usage: gwcli browse [OPTIONS] [page]") browseOptions -- Now uses the real browseOptions
+-- Combined command parser using subcommands
+commandParser :: Parser Command
+commandParser = subparser
+    ( command "auth" (info (AuthCmd <$> authOptionsParser <**> helper) (progDesc "Authenticate with services"))
+   <> command "browse" (info (BrowseCmd <$> browseOptionsCliParser <**> helper) (progDesc "Open repository page in browser"))
+   <> command "issue" (info (IssueCmd <$> issueCommandParser) (progDesc "Manage issues (list, create, show)"))
+   <> command "pullrequest" (info (PullRequestCmd <$> pullRequestCommandParser) (progDesc "Manage pull requests (list, create, show)")) -- Added
+   <> command "version" (info (VersionCmd <$> versionOptionsParser <**> helper) (progDesc "Show version (same as --version flag)"))
+    )
+
+-- Top-level parser for all arguments (GlobalOptions + Command)
+data CliArguments = CliArguments GlobalOptions Command deriving (Show, Eq)
+
+cliArgumentsParser :: Parser CliArguments
+cliArgumentsParser = CliArguments <$> globalOptionsParser <*> commandParser
+
+-- Version option for --version flag (version string provided externally)
+versionOption :: String -> Parser (a -> a)
+versionOption versionStr = infoOption versionStr
+    ( long "version"
+   <> short 'V' -- Different from verbose 'v'
+   <> help "Show version information"
+   <> hidden ) -- Hidden because we also have a 'version' subcommand
+
+-- ParserInfo for the entire application
+optsParserInfo :: String -> ParserInfo CliArguments
+optsParserInfo versionStr = info (cliArgumentsParser <**> helper <**> versionOption versionStr)
+    ( fullDesc
+   <> progDesc (
+        "CLI tool for interacting with Git services. " ++
+        "Try 'gwcli <command> --help' for command-specific help.\n\n" ++ -- Added newline for better formatting
+        "To generate completion scripts (redirect output to a file):\n" ++
+        "  gwcli --bash-completion-script gwcli\n" ++
+        "  gwcli --fish-completion-script gwcli\n" ++
+        "  gwcli --zsh-completion-script gwcli"
+        )
+   <> header "gwcli - Git Workflow CLI" )
+
+-- Main function to be called from Main.hs
+parseCliArgs :: String -> IO CliArguments
+parseCliArgs versionStr = execParser (optsParserInfo versionStr)
