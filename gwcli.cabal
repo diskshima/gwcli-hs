@@ -1,7 +1,7 @@
 cabal-version: 3.14
 
 name:           gwcli
-version:        0.9.7.0
+version:        0.9.8.0
 description:    Please see the README on GitHub at <https://github.com/diskshima/gwcli-hs#readme>
 homepage:       https://github.com/diskshima/gwcli-hs
 bug-reports:    https://github.com/diskshima/gwcli-hs/issues
@@ -21,7 +21,6 @@ source-repository head
 
 library
   exposed-modules:
-      NewCommandLineParser
       CommandLineParser
       CredentialUtils
       GitUtils
@@ -48,7 +47,7 @@ library
   ghc-options: -Wall -O2
   build-depends:
       base >=4.7 && <5
-    , optparse-applicative >= 0.17 && < 0.19
+    , optparse-applicative >= 0.17 && < 0.20
     , HTTP
     , aeson
     , aeson-casing
@@ -86,7 +85,7 @@ executable gwcli
   build-depends:
       gwcli
     , base >=4.7 && <5
-    , optparse-applicative >= 0.17 && < 0.19
+    , optparse-applicative >= 0.17 && < 0.20
     , HTTP
     , aeson
     , aeson-casing
@@ -131,7 +130,7 @@ test-suite gwcli-test
     , directory
     , filepath
     , git
-    , hoauth2 >= 2.4.0
+    , hoauth2 >= 2.8.0
     , http-conduit
     , http-types
     , lens
