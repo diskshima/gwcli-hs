@@ -25,6 +25,7 @@ import           Bitbucket.PullRequest      as BP (BranchDetails (..),
                                                    PullRequestBranch (..),
                                                    PullRequests (..))
 import           Bitbucket.PullRequest      as BPP (PullRequestPost (..))
+import           Control.Exception          (catch, SomeException)
 import           Control.Lens               ((^.))
 import           Control.Lens.Operators     ((.~))
 import           CredentialUtils            (Credentials (..), credFilePath,
@@ -151,13 +152,16 @@ refreshAccessToken = do
 
 getBitbucket :: Token -> String -> IO (Response BL.ByteString)
 getBitbucket token url = do
-  response <- getWith (bearerAuthHeader token) url
+  response <- (getWith (bearerAuthHeader token) url) `catch` handleHttpException url
   let code = response ^. (responseStatus . statusCode)
   case code of
     401 -> do
       newToken <- refreshAccessToken
-      getWith (bearerAuthHeader newToken) url
+      (getWith (bearerAuthHeader newToken) url) `catch` handleHttpException url
     _   -> return response
+  where
+    handleHttpException :: String -> SomeException -> IO a
+    handleHttpException reqUrl e = P.error $ "HTTP request failed.\nURL: " ++ reqUrl ++ "\nError: " ++ P.show e
 
 getIssue :: Token -> String -> IO I.Issue
 getIssue token itemId = responseToIssue <$> runItemQuery token path
@@ -178,7 +182,7 @@ listIssues token _ = do
     Just url -> do
       issues <- getIssuesFromUrl token url
       return $ responseToIssue <$> issues
-    Nothing  -> P.error "Could not identify remote URL."
+    Nothing  -> P.error "Could not identify remote URL. Please ensure you are in a Git repository with a Bitbucket remote."
 
 getIssuesFromUrl :: Token -> String -> IO [Issue]
 getIssuesFromUrl _ "" = return []
@@ -200,7 +204,7 @@ listPullRequests token = do
     Just url -> do
       items <- getPullRequestsFromUrl token url
       return $ responseToPullRequest <$> items
-    Nothing  -> P.error "Could not identify remote URL."
+    Nothing  -> P.error "Could not identify remote URL. Please ensure you are in a Git repository with a Bitbucket remote."
 
 createPullRequest :: Token -> PR.PullRequest -> IO PR.PullRequest
 createPullRequest token item = responseToPullRequest <$> runCreate token "/pullrequests" param
@@ -220,19 +224,26 @@ runItemQuery token suffix = do
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
     Just url -> do
-      maybeItem <- decodeResponse <$> getBitbucket token url
+      response <- getBitbucket token url
+      let code = response ^. (responseStatus . statusCode)
+      maybeItem <- return $ decodeResponse response
       case maybeItem of
         Just item -> return item
-        Nothing   -> P.error "Failed to parse response."
-    Nothing -> P.error "Could not identify remote URL."
+        Nothing   -> P.error $ "Failed to parse response from Bitbucket API.\nURL: " ++ url ++ "\nHTTP Status: " ++ P.show code
+    Nothing -> P.error "Could not identify remote URL. Please ensure you are in a Git repository with a Bitbucket remote."
 
 runCreate :: (ToJSON a, FromJSON b) => Token -> String -> a -> IO b
 runCreate token suffix param = do
   -- print $ toJSON param
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
-    Just url -> decodeResponseOrError <$> postBitbucket token url (toJSON param)
-    Nothing  -> P.error "Could not identify remote URL."
+    Just url -> do
+      response <- postBitbucket token url (toJSON param)
+      let code = response ^. (responseStatus . statusCode)
+      case decodeResponse response of
+        Just item -> return item
+        Nothing   -> P.error $ "Failed to parse response from Bitbucket API.\nURL: " ++ url ++ "\nHTTP Status: " ++ P.show code
+    Nothing  -> P.error "Could not identify remote URL. Please ensure you are in a Git repository with a Bitbucket remote."
 
 readIssueTemplate :: IO String
 readIssueTemplate = return ""
@@ -241,4 +252,7 @@ readPRTemplate :: IO String
 readPRTemplate = return ""
 
 postBitbucket :: Postable a => Token -> String -> a -> IO (Response BL.ByteString)
-postBitbucket token = postWith $ bearerAuthHeader token
+postBitbucket token url body = (postWith (bearerAuthHeader token) url body) `catch` handleHttpException url
+  where
+    handleHttpException :: String -> SomeException -> IO a
+    handleHttpException reqUrl e = P.error $ "HTTP request failed.\nURL: " ++ reqUrl ++ "\nError: " ++ P.show e

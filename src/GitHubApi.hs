@@ -17,6 +17,7 @@ module GitHubApi
   , runCreate
   ) where
 
+import           Control.Exception         (SomeException, catch)
 import           Control.Lens.Operators    ((.~), (^.))
 import           Data.Aeson                (FromJSON (parseJSON),
                                             ToJSON (toJSON), genericParseJSON)
@@ -39,7 +40,8 @@ import           JsonUtils                 (decodeResponse,
 import           Network.HTTP.Types.URI    (renderQuery)
 import           Network.Wreq              (Options, Response, defaults,
                                             getWith, header, linkURL, postWith,
-                                            responseLink)
+                                            responseLink, responseStatus,
+                                            statusCode)
 import           Network.Wreq.Types        (Postable)
 import           Prelude                   as P
 import           System.Directory          (doesPathExist)
@@ -101,10 +103,16 @@ gitHubHeader :: Token -> Options
 gitHubHeader token = defaults & header "Authorization" .~ [U8.fromString $ "token " ++ token]
 
 getGitHub :: Token -> String -> IO (Response BL.ByteString)
-getGitHub token = getWith $ gitHubHeader token
+getGitHub token url = (getWith (gitHubHeader token) url) `catch` handleHttpException url
+  where
+    handleHttpException :: String -> SomeException -> IO a
+    handleHttpException reqUrl e = P.error $ "HTTP request failed.\nURL: " ++ reqUrl ++ "\nError: " ++ P.show e
 
 postGitHub :: Postable a => Token -> String -> a -> IO (Response BL.ByteString)
-postGitHub token = postWith $ gitHubHeader token
+postGitHub token url postBody = (postWith (gitHubHeader token) url postBody) `catch` handleHttpException url
+  where
+    handleHttpException :: String -> SomeException -> IO a
+    handleHttpException reqUrl e = P.error $ "HTTP request failed.\nURL: " ++ reqUrl ++ "\nError: " ++ P.show e
 
 responseToIssue :: IG.IssueGet -> I.Issue
 responseToIssue i =
@@ -145,18 +153,20 @@ runItemQuery token suffix = do
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
     Just url -> do
-      maybeItem <- decodeResponse <$> getGitHub token url
+      response <- getGitHub token url
+      let code = response ^. (responseStatus . statusCode)
+      maybeItem <- return $ decodeResponse response
       case maybeItem of
         Just item -> return item
-        Nothing   -> P.error "Failed to parse response."
-    Nothing -> P.error "Could not identify remote URL."
+        Nothing   -> P.error $ "Failed to parse response from GitHub API.\nURL: " ++ url ++ "\nHTTP Status: " ++ P.show code
+    Nothing -> P.error "Could not identify remote URL. Please ensure you are in a Git repository with a GitHub remote."
 
 runListQuery :: FromJSON a => Token -> String -> (a -> b) -> (a -> Bool) -> Bool -> IO [b]
 runListQuery token suffix converter filtFunc showAll = do
   maybeUrl <- buildUrl suffix params
   case maybeUrl of
     Just url -> fmap converter . filter filtFunc <$> getItemsFromUrl token url
-    Nothing  -> P.error "Could not identify remote URL."
+    Nothing  -> P.error "Could not identify remote URL. Please ensure you are in a Git repository with a GitHub remote."
   where params = if showAll
                     then (Just . toParamList) [("filter", "all"), ("state", "all")]
                     else Nothing
@@ -173,11 +183,13 @@ runCreate token suffix param = do
   maybeUrl <- buildUrl suffix Nothing
   case maybeUrl of
     Just url -> do
-      maybeItem <- decodeResponse <$> postGitHub token url (toJSON param)
+      response <- postGitHub token url (toJSON param)
+      let code = response ^. (responseStatus . statusCode)
+      maybeItem <- return $ decodeResponse response
       case maybeItem of
         Just item -> return item
-        Nothing   -> P.error "Failed to parse response."
-    Nothing -> P.error "Could not identify remote URL."
+        Nothing   -> P.error $ "Failed to parse response from GitHub API.\nURL: " ++ url ++ "\nHTTP Status: " ++ P.show code
+    Nothing -> P.error "Could not identify remote URL. Please ensure you are in a Git repository with a GitHub remote."
 
 readIssueTemplate :: IO String
 readIssueTemplate = readFileFromRepoRoot ".github/ISSUE_TEMPLATE.md"
