@@ -1,6 +1,9 @@
 # Changelog for gwcli-hs
 
-## Unreleased changes
+## 0.9.9.0 -- 2025-10-12
+
+* Improved error messages when API calls fail with HTTP status codes and response details (#95)
+* Fixed GHC optimization flag: corrected invalid -O4 to proper -O2 (#96)
 
 ## 0.9.8.0 -- 2025-10-11
 
