@@ -136,10 +136,16 @@ issueCommandParser :: Parser IssueCommand
 issueCommandParser = subparser
     ( command "list" (info (IssueList <$> issueListOptionsParser <**> helper)
         (progDesc "List issues. Use --all to show all issues."))
+   <> command "l" (info (IssueList <$> issueListOptionsParser <**> helper)
+        (progDesc "List issues (short form)"))
    <> command "create" (info (IssueCreate <$> issueCreateOptionsParser <**> helper)
         (progDesc "Create a new issue."))
+   <> command "c" (info (IssueCreate <$> issueCreateOptionsParser <**> helper)
+        (progDesc "Create a new issue (short form)"))
    <> command "show" (info (IssueShow <$> issueShowOptionsParser <**> helper)
         (progDesc "Show a specific issue by its number."))
+   <> command "s" (info (IssueShow <$> issueShowOptionsParser <**> helper)
+        (progDesc "Show a specific issue (short form)"))
     )
 
 -- Parsers for pull request actions
@@ -177,20 +183,31 @@ pullRequestCommandParser :: Parser PullRequestCommand
 pullRequestCommandParser = subparser
     ( command "list" (info (PullRequestList <$> pullRequestListOptionsParser <**> helper)
         (progDesc "List pull requests. Use --all to show all PRs."))
+   <> command "l" (info (PullRequestList <$> pullRequestListOptionsParser <**> helper)
+        (progDesc "List pull requests (short form)"))
    <> command "create" (info (PullRequestCreate <$> pullRequestCreateOptionsParser <**> helper)
         (progDesc "Create a new pull request."))
+   <> command "c" (info (PullRequestCreate <$> pullRequestCreateOptionsParser <**> helper)
+        (progDesc "Create a new pull request (short form)"))
    <> command "show" (info (PullRequestShow <$> pullRequestShowOptionsParser <**> helper)
         (progDesc "Show a specific pull request by its number."))
+   <> command "s" (info (PullRequestShow <$> pullRequestShowOptionsParser <**> helper)
+        (progDesc "Show a specific pull request (short form)"))
     )
 
 -- Combined command parser using subcommands
 commandParser :: Parser Command
 commandParser = subparser
     ( command "auth" (info (AuthCmd <$> authOptionsParser <**> helper) (progDesc "Authenticate with services"))
+   <> command "a" (info (AuthCmd <$> authOptionsParser <**> helper) (progDesc "Authenticate with services (short form)"))
    <> command "browse" (info (BrowseCmd <$> browseOptionsCliParser <**> helper) (progDesc "Open repository page in browser"))
+   <> command "b" (info (BrowseCmd <$> browseOptionsCliParser <**> helper) (progDesc "Open repository page in browser (short form)"))
    <> command "issue" (info (IssueCmd <$> issueCommandParser) (progDesc "Manage issues (list, create, show)"))
-   <> command "pullrequest" (info (PullRequestCmd <$> pullRequestCommandParser) (progDesc "Manage pull requests (list, create, show)")) -- Added
+   <> command "i" (info (IssueCmd <$> issueCommandParser) (progDesc "Manage issues (short form)"))
+   <> command "pullrequest" (info (PullRequestCmd <$> pullRequestCommandParser) (progDesc "Manage pull requests (list, create, show)"))
+   <> command "pr" (info (PullRequestCmd <$> pullRequestCommandParser) (progDesc "Manage pull requests (short form)"))
    <> command "version" (info (VersionCmd <$> versionOptionsParser <**> helper) (progDesc "Show version (same as --version flag)"))
+   <> command "v" (info (VersionCmd <$> versionOptionsParser <**> helper) (progDesc "Show version (short form)"))
     )
 
 -- Top-level parser for all arguments (GlobalOptions + Command)
