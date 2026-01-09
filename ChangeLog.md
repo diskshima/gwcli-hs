@@ -1,5 +1,12 @@
 # Changelog for gwcli-hs
 
+## 0.10.0.0 -- 2026-01-09
+
+* Added short command aliases for improved CLI usability:
+  - Top-level: `a` (auth), `b` (browse), `i` (issue), `pr` (pullrequest), `v` (version)
+  - Subcommands: `l` (list), `c` (create), `s` (show)
+* Restored convenience of short commands from the old GetOpt-based parser
+
 ## 0.9.9.0 -- 2025-10-12
 
 * Improved error messages when API calls fail with HTTP status codes and response details (#95)
